@@ -1,0 +1,31 @@
+import { computed, ref } from 'vue'
+import { defineStore } from 'pinia'
+import { storage } from '../storage'
+import { buildIndex } from '../lib/items'
+import type { Video } from '../types'
+
+const K = 'er-ui:video'
+const lsGet = (): string | null => { try { return localStorage.getItem(K) } catch { return null } }
+const lsSet = (v: string) => { try { localStorage.setItem(K, v) } catch { /* 무시 */ } }
+
+export const useLibraryStore = defineStore('library', () => {
+  const videos = ref<Video[]>([])
+  const currentId = ref<string | null>(lsGet())
+
+  async function load() {
+    videos.value = await storage.loadVideos()
+  }
+  const index = computed(() => buildIndex(videos.value))
+  const items = computed(() => index.value.items)
+  const exprs = computed(() => index.value.exprs)
+  const current = computed(() => videos.value.find((v) => v.id === currentId.value) ?? videos.value[0] ?? null)
+  function select(id: string) {
+    currentId.value = id
+    lsSet(id)
+  }
+  const exprsOf = (videoId: string) => exprs.value.filter((e) => e.videoId === videoId)
+  const itemsOf = (videoId: string) => items.value.filter((i) => i.videoId === videoId)
+  const byId = (id: string) => index.value.map.get(id)
+
+  return { videos, currentId, load, items, exprs, current, select, exprsOf, itemsOf, byId }
+})
