@@ -9,7 +9,8 @@ const r = (n: number, k: number) => `${vid}-e${n}-r${k}`
 
 export const sampleVideo: Video = {
   id: vid,
-  youtubeId: vid,
+  // 재생 동작 확인용으로 공개 영상(Blender 'Big Buck Bunny')을 연결했다. 카드 내용과는 무관하다.
+  youtubeId: 'aqz-KE-bpKQ',
   title: '샘플 · 여행 영어 기본 표현',
   createdAt: 1,
   cards: [

@@ -127,12 +127,6 @@ test('영어 가리기: 가려지고, 누르면 보인다', async ({ page }) => 
   await expect(en).toHaveClass(/rev/)
 })
 
-test('▶ 버튼은 재생 요청 안내를 띄운다 (플레이어는 3단계)', async ({ page }) => {
-  await goSent(page)
-  await page.getByRole('button', { name: /원어민 .*부터 재생/ }).first().click()
-  await expect(page.getByRole('status')).toContainText('플레이어는 3단계')
-})
-
 test('모든 화면에서 가로로 넘치지 않는다', async ({ page }) => {
   for (const name of ['문장', '복습', '어려움', '홈']) {
     await page.getByRole('tab', { name: new RegExp(name) }).click()

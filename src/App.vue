@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import TopBar from './components/TopBar.vue'
 import TabBar from './components/TabBar.vue'
+import PlayerPanel from './components/PlayerPanel.vue'
+import { usePlayerStore } from './stores/player'
 import ReviewOverlay from './components/ReviewOverlay.vue'
 import CelebrateOverlay from './components/CelebrateOverlay.vue'
 import { useLibraryStore } from './stores/library'
@@ -11,6 +13,7 @@ import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 
 const ui = useUiStore()
+const player = usePlayerStore()
 const ready = ref(false)
 const failed = ref(false)
 
@@ -27,7 +30,10 @@ onMounted(async () => {
 <template>
   <div class="app" :class="{ 'hide-en': ui.hideEn, 'hide-ko': ui.hideKo }">
     <template v-if="ready">
-      <TopBar />
+      <div class="sticky-head">
+        <TopBar />
+        <PlayerPanel v-if="player.open" />
+      </div>
       <main><RouterView /></main>
       <TabBar />
     </template>

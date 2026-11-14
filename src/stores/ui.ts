@@ -1,8 +1,6 @@
 import { reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { fmt } from '../lib/text'
 import { todayKey } from '../lib/dates'
-import type { Seg } from '../types'
 
 const get = (k: string): string | null => { try { return localStorage.getItem(k) } catch { return null } }
 const set = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* 무시 */ } }
@@ -46,10 +44,5 @@ export const useUiStore = defineStore('ui', () => {
     rv.i++; rv.shown = false
     if (rv.i >= rv.ids.length) rv.fin = true
   }
-  /** 3단계에서 실제 플레이어로 바뀐다. 지금은 요청만 알려준다. */
-  function requestPlay(_videoId: string, seg: Seg, label: string) {
-    say(`▶ ${label} ${fmt(seg[0])}–${fmt(seg[1])} · 플레이어는 3단계에서 연결돼요`)
-  }
-
-  return { hideEn, hideKo, revealed, toast, overlay, rv, toggleHideEn, toggleHideKo, toggleReveal, say, celebrateOnce, startReview, closeOverlay, reviewNext, requestPlay }
+  return { hideEn, hideKo, revealed, toast, overlay, rv, toggleHideEn, toggleHideKo, toggleReveal, say, celebrateOnce, startReview, closeOverlay, reviewNext }
 })

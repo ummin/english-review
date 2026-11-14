@@ -5,6 +5,7 @@ import type { AppStorage } from './types'
 
 const K_PROGRESS = 'er-sample:progress'
 const K_SETTINGS = 'er-sample:settings'
+const K_YT = 'er-sample:youtube'
 
 function read<T>(key: string): T | null {
   try {
@@ -39,7 +40,13 @@ function seed(): Record<string, ProgressRecord> {
 export function createSampleStorage(): AppStorage {
   return {
     async loadVideos() {
-      return [structuredClone(sampleVideo)]
+      const video = structuredClone(sampleVideo)
+      // 주소 뒤에 ?v=영상ID 를 붙여 열면 샘플 카드로 그 영상을 재생해 볼 수 있다. (퍼가기 허용 여부 확인용)
+      const q = new URLSearchParams(location.search).get('v')
+      if (q && /^[A-Za-z0-9_-]{11}$/.test(q)) write(K_YT, q)
+      const yt = read<string>(K_YT)
+      if (yt && /^[A-Za-z0-9_-]{11}$/.test(yt)) video.youtubeId = yt
+      return [video]
     },
     async loadProgress() {
       return read<Record<string, ProgressRecord>>(K_PROGRESS) ?? seed()

@@ -26,6 +26,8 @@ export const useLibraryStore = defineStore('library', () => {
   const exprsOf = (videoId: string) => exprs.value.filter((e) => e.videoId === videoId)
   const itemsOf = (videoId: string) => items.value.filter((i) => i.videoId === videoId)
   const byId = (id: string) => index.value.map.get(id)
+  /** 앱 안 영상 id → 유튜브 영상 id */
+  const youtubeIdOf = (videoId: string) => videos.value.find((v) => v.id === videoId)?.youtubeId ?? videoId
 
-  return { videos, currentId, load, items, exprs, current, select, exprsOf, itemsOf, byId }
+  return { videos, currentId, load, items, exprs, current, select, exprsOf, itemsOf, byId, youtubeIdOf }
 })
