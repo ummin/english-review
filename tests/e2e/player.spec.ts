@@ -133,3 +133,74 @@ test('플레이어가 열려 있어도 가로로 넘치지 않는다', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
   await expect(page.getByRole('region', { name: '재생 플레이어' })).toBeVisible()
 })
+
+test.describe('카드 복습 안에서 재생', () => {
+  const startReview = async (page: Page) => {
+    await page.getByRole('tab', { name: /복습/ }).click()
+    await page.getByRole('button', { name: /카드로 복습/ }).click()
+    await expect(page.getByRole('dialog', { name: '카드 복습' })).toBeVisible()
+  }
+  const loads = async (page: Page) => (await calls(page)).filter((x) => x[0] === 'load')
+
+  test('듣기를 누르면 플레이어가 카드 화면 안에 열린다(뒤에 가려지지 않는다)', async ({ page }) => {
+    await startReview(page)
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('dialog', { name: '카드 복습' }).getByRole('button', { name: /듣기 .*부터 재생/ }).click()
+    const dialog = page.getByRole('dialog', { name: '카드 복습' })
+    const region = dialog.getByRole('region', { name: '재생 플레이어' })
+    await expect(region).toBeVisible()
+    await expect(page.getByRole('region', { name: '재생 플레이어' })).toHaveCount(1) // 위쪽 고정 플레이어는 따로 없다
+    const box = await region.locator('.player-box').boundingBox()
+    expect(box!.height).toBeGreaterThanOrEqual(200)
+    // 화면 안에 보이고, 아래 버튼과 겹치지 않는다
+    const foot = await dialog.locator('.rfoot').boundingBox()
+    expect(box!.y + box!.height).toBeLessThanOrEqual(foot!.y + 1)
+    expect(box!.y).toBeGreaterThanOrEqual(0)
+    expect((await loads(page)).length).toBe(1)
+  })
+
+  test('다시 볼래요를 누르면 같은 카드에서 구간이 다시 재생되고 정답은 가려진다', async ({ page }) => {
+    await startReview(page)
+    const q = await page.getByTestId('rv-q').textContent()
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('button', { name: '다시 볼래요' }).click()
+    await expect(page.getByTestId('rv-q')).toHaveText(q!)
+    await expect(page.getByTestId('rv-a')).toHaveCount(0)
+    await expect(page.getByRole('dialog').getByRole('region', { name: '재생 플레이어' })).toBeVisible()
+    await expect.poll(async () => (await loads(page)).length).toBe(1)
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('button', { name: '다시 볼래요' }).click()
+    await expect.poll(async () => (await loads(page)).length).toBe(2)
+  })
+
+  test('알아요로 다음 카드로 가면 소리가 멈추고 플레이어가 닫힌다', async ({ page }) => {
+    await startReview(page)
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('button', { name: '다시 볼래요' }).click()
+    await expect(page.getByRole('region', { name: '재생 플레이어' })).toBeVisible()
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('button', { name: '알아요' }).click()
+    await expect(page.getByRole('region', { name: '재생 플레이어' })).toHaveCount(0)
+    expect(await calls(page)).toContainEqual(['destroy'])
+  })
+
+  test('복습을 닫으면 플레이어도 닫히고, 문장 화면에서는 다시 위쪽에 열린다', async ({ page }) => {
+    await startReview(page)
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('dialog', { name: '카드 복습' }).getByRole('button', { name: /듣기 .*부터 재생/ }).click()
+    await expect(page.getByRole('region', { name: '재생 플레이어' })).toBeVisible()
+    await page.getByRole('button', { name: '복습 닫기' }).click()
+    await expect(page.getByRole('region', { name: '재생 플레이어' })).toHaveCount(0)
+    await page.getByRole('tab', { name: /문장/ }).click()
+    await play(page)
+    await expect(page.locator('.sticky-head').getByRole('region', { name: '재생 플레이어' })).toBeVisible()
+  })
+
+  test('복습 카드에서도 가로로 넘치지 않는다', async ({ page }) => {
+    await startReview(page)
+    await page.getByRole('button', { name: '정답 보기' }).click()
+    await page.getByRole('button', { name: '다시 볼래요' }).click()
+    await expect(page.getByRole('region', { name: '재생 플레이어' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+  })
+})

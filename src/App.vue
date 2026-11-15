@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { RouterView } from 'vue-router'
 import TopBar from './components/TopBar.vue'
 import TabBar from './components/TabBar.vue'
@@ -17,6 +17,9 @@ const player = usePlayerStore()
 const ready = ref(false)
 const failed = ref(false)
 
+// 복습 카드 화면이 열리고 닫힐 때는 플레이어도 멈춘다. (카드 안에 따로 열린다)
+watch(() => ui.overlay, () => player.close())
+
 onMounted(async () => {
   try {
     await Promise.all([useLibraryStore().load(), useProgressStore().load(), useSettingsStore().load()])
@@ -32,7 +35,7 @@ onMounted(async () => {
     <template v-if="ready">
       <div class="sticky-head">
         <TopBar />
-        <PlayerPanel v-if="player.open" />
+        <PlayerPanel v-if="player.open && ui.overlay !== 'review'" />
       </div>
       <main><RouterView /></main>
       <TabBar />

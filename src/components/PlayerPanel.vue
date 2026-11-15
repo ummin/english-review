@@ -7,7 +7,7 @@ import { usePlayerStore } from '../stores/player'
 const player = usePlayerStore()
 const mount = ref<HTMLElement | null>(null)
 onMounted(() => player.registerHost(mount.value))
-onBeforeUnmount(() => player.registerHost(null))
+onBeforeUnmount(() => player.unregisterHost(mount.value))
 </script>
 
 <template>

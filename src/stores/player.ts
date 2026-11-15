@@ -29,6 +29,8 @@ export const usePlayerStore = defineStore('player', () => {
   const ytLink = computed(() => (videoId.value ? `https://youtu.be/${encodeURIComponent(videoId.value)}?t=${Math.floor(seg.value?.[0] ?? 0)}` : ''))
 
   function registerHost(el: HTMLElement | null) { host = el }
+  /** 화면이 바뀌며 새 자리가 먼저 등록된 경우를 건드리지 않도록, 같은 요소일 때만 해제한다. */
+  function unregisterHost(el: HTMLElement | null) { if (host === el) host = null }
 
   function fail(msg: string) {
     clearTimeout(tapTimer)
@@ -106,5 +108,5 @@ export const usePlayerStore = defineStore('player', () => {
     message.value = ''
   }
 
-  return { open, status, message, videoId, seg, label, loop, rate, ytLink, registerHost, requestPlay, replay, toggleLoop, setRate, close }
+  return { open, status, message, videoId, seg, label, loop, rate, ytLink, registerHost, unregisterHost, requestPlay, replay, toggleLoop, setRate, close }
 })
