@@ -1,11 +1,15 @@
 import { sampleVideo } from '../data/sample'
 import { addDays, dateKey } from '../lib/dates'
-import type { ProgressRecord, Settings } from '../types'
+import type { ProgressRecord, Settings, Video } from '../types'
 import type { AppStorage } from './types'
 
 const K_PROGRESS = 'er-sample:progress'
 const K_SETTINGS = 'er-sample:settings'
 const K_YT = 'er-sample:youtube'
+const K_VIDEOS = 'er-sample:videos'
+
+const isVideo = (v: unknown): v is Video =>
+  typeof v === 'object' && v !== null && typeof (v as Video).id === 'string' && typeof (v as Video).youtubeId === 'string' && Array.isArray((v as Video).cards)
 
 function read<T>(key: string): T | null {
   try {
@@ -46,7 +50,16 @@ export function createSampleStorage(): AppStorage {
       if (q && /^[A-Za-z0-9_-]{11}$/.test(q)) write(K_YT, q)
       const yt = read<string>(K_YT)
       if (yt && /^[A-Za-z0-9_-]{11}$/.test(yt)) video.youtubeId = yt
-      return [video]
+      const mine = (read<unknown[]>(K_VIDEOS) ?? []).filter(isVideo)
+      return [video, ...mine]
+    },
+    async saveVideo(v) {
+      const mine = (read<unknown[]>(K_VIDEOS) ?? []).filter(isVideo).filter((x) => x.id !== v.id)
+      write(K_VIDEOS, [...mine, v])
+    },
+    async deleteVideo(id) {
+      const mine = (read<unknown[]>(K_VIDEOS) ?? []).filter(isVideo).filter((x) => x.id !== id)
+      write(K_VIDEOS, mine)
     },
     async loadProgress() {
       return read<Record<string, ProgressRecord>>(K_PROGRESS) ?? seed()

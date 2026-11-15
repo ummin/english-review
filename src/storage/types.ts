@@ -6,6 +6,9 @@ import type { ProgressRecord, Settings, Video } from '../types'
  */
 export interface AppStorage {
   loadVideos(): Promise<Video[]>
+  /** 영상(과 카드)을 새로 저장하거나 덮어쓴다. */
+  saveVideo(v: Video): Promise<void>
+  deleteVideo(id: string): Promise<void>
   loadProgress(): Promise<Record<string, ProgressRecord>>
   saveProgress(cardId: string, rec: ProgressRecord): Promise<void>
   loadSettings(): Promise<Settings>

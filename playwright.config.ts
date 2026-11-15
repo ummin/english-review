@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
+// 한글 파일 이름이 내려받기에서 깨지지 않도록 UTF-8 환경으로 실행한다.
+process.env.LC_ALL ??= 'C.UTF-8'
+
 export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30_000,

@@ -3,6 +3,9 @@ import HomeView from './views/HomeView.vue'
 import SentView from './views/SentView.vue'
 import ReviewView from './views/ReviewView.vue'
 import StarView from './views/StarView.vue'
+import VideoEditView from './views/VideoEditView.vue'
+import ShareView from './views/ShareView.vue'
+import AccountView from './views/AccountView.vue'
 
 // 해시 주소(#/...)를 써서 GitHub Pages에서 새로고침해도 404가 나지 않게 한다.
 export const router = createRouter({
@@ -12,6 +15,10 @@ export const router = createRouter({
     { path: '/sent', name: 'sent', component: SentView },
     { path: '/review', name: 'review', component: ReviewView },
     { path: '/star', name: 'star', component: StarView },
+    { path: '/video/new', name: 'video-new', component: VideoEditView },
+    { path: '/video/:id', name: 'video-edit', component: VideoEditView },
+    { path: '/share/:id', name: 'share', component: ShareView },
+    { path: '/account', name: 'account', component: AccountView },
   ],
   scrollBehavior: () => ({ top: 0 }),
 })

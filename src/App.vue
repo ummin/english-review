@@ -37,7 +37,7 @@ onMounted(async () => {
         <TopBar />
         <PlayerPanel v-if="player.open && ui.overlay !== 'review'" />
       </div>
-      <main><RouterView /></main>
+      <main><RouterView v-slot="{ Component, route }"><component :is="Component" :key="route.fullPath" /></RouterView></main>
       <TabBar />
     </template>
     <div v-else-if="failed" class="empty" style="margin-top: 40px"><strong>데이터를 불러오지 못했어요</strong><span>새로고침해도 같으면 잠시 뒤 다시 열어 주세요.</span></div>

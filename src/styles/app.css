@@ -207,3 +207,39 @@ input:focus,textarea:focus{outline:3px solid var(--blue);outline-offset:0;border
 .player-bar .icon{flex:none}
 .player-hint{margin:0;font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:6px 10px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* 4단계: 영상 등록·편집, 공유, 계정 화면 */
+.subhead{display:flex;align-items:center;gap:10px;margin:4px 0 4px}
+.subhead h2{margin:0;font-weight:900;font-size:20px;letter-spacing:-.01em}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec h3{margin:0;font-size:16px;font-weight:900;display:flex;align-items:center;gap:8px}
+.sec h3 .no{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:99px;background:var(--blue);color:#fff;font-family:var(--font-en);font-size:13px}
+.sec p,.sec .hintp{margin:0;font-size:14px;color:var(--muted)}
+.field-msg{font-size:13px;font-weight:700;margin:0}
+.field-msg.ok{color:var(--green)} .field-msg.bad{color:var(--red)}
+.errlist{margin:0;padding-left:18px;font-size:13px;color:var(--red);font-weight:700}
+.warnlist{margin:0;padding-left:18px;font-size:13px;color:var(--warn);font-weight:700}
+.prompt-box{max-height:220px;min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+details.more>summary{cursor:pointer;font-weight:900;color:var(--blue);min-height:44px;display:flex;align-items:center}
+.dcard{display:flex;flex-direction:column;gap:8px;background:var(--soft);border-radius:16px;padding:12px}
+.dcard .row{display:flex;align-items:flex-start;gap:8px}
+.dcard .row .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.dcard .en{font-family:var(--font-en);font-weight:900;font-size:16px;margin:0}
+.dcard .ko{margin:0;color:var(--muted);font-size:14px}
+.dcard .times{font-size:12px;color:var(--muted);font-family:var(--font-en);font-weight:700}
+.switch{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:900}
+.switch input{width:22px;height:22px}
+.linkbox{display:flex;gap:8px;align-items:center}
+.linkbox input{flex:1;min-width:0}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow .cbtn{flex:1;min-width:140px}
+.who{display:flex;align-items:center;gap:12px}
+.who .av{width:48px;height:48px;border-radius:99px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;flex:none}
+.who h3{margin:0;font-size:17px;font-weight:900} .who small{color:var(--muted);overflow-wrap:anywhere}
+.cbtn.google{--c:#fff;--sh:var(--line);color:#1E2833;border:2px solid var(--line)}
+.cbtn.kakao{--c:#FEE500;--sh:#C9B400;color:#191600}
+.video .btns{display:flex;gap:8px;flex-wrap:wrap}
+.addrow{display:flex}
+.cbtn:focus-within{outline:3px solid var(--blue);outline-offset:2px}
+/* 띄어쓰기 없는 아주 긴 글자도 카드 안에서 줄바꿈되게 한다 */
+.note-t,.ctx,.dcard .t,.rcard .q,.rcard .en{overflow-wrap:anywhere}
+.ed-sub .tag{align-self:flex-start}

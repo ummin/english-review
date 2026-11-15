@@ -23,3 +23,29 @@ describe('샘플 저장소', () => {
     expect(v!.youtubeId).not.toBe('abc')
   })
 })
+
+describe('샘플 저장소: 내 영상', () => {
+  const mk = (id: string) => ({ id, youtubeId: 'aqz-KE-bpKQ', title: id, createdAt: 5, cards: [] })
+  beforeEach(() => { localStorage.clear(); history.replaceState(null, '', '/') })
+  it('저장하면 샘플 뒤에 붙고, 같은 id 로 다시 저장하면 덮어쓴다', async () => {
+    const s = createSampleStorage()
+    await s.saveVideo(mk('a'))
+    await s.saveVideo({ ...mk('a'), title: '바뀜' })
+    await s.saveVideo(mk('b'))
+    const v = await s.loadVideos()
+    expect(v.map((x) => x.id)).toEqual(['SAMPLE00001', 'a', 'b'])
+    expect(v[1]!.title).toBe('바뀜')
+  })
+  it('삭제하면 사라지고 샘플은 그대로다', async () => {
+    const s = createSampleStorage()
+    await s.saveVideo(mk('a'))
+    await s.deleteVideo('a')
+    expect((await s.loadVideos()).map((x) => x.id)).toEqual(['SAMPLE00001'])
+  })
+  it('저장된 값이 깨져 있어도 앱이 멈추지 않는다', async () => {
+    localStorage.setItem('er-sample:videos', JSON.stringify([{ foo: 1 }, null, 'x', mk('ok')]))
+    expect((await createSampleStorage().loadVideos()).map((x) => x.id)).toEqual(['SAMPLE00001', 'ok'])
+    localStorage.setItem('er-sample:videos', '{깨짐')
+    expect(await createSampleStorage().loadVideos()).toHaveLength(1)
+  })
+})

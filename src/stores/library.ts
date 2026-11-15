@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { storage } from '../storage'
 import { buildIndex } from '../lib/items'
+import { sampleVideo } from '../data/sample'
 import type { Video } from '../types'
 
 const K = 'er-ui:video'
@@ -23,11 +24,25 @@ export const useLibraryStore = defineStore('library', () => {
     currentId.value = id
     lsSet(id)
   }
+  const isSample = (id: string) => id === sampleVideo.id
+  /** 영상을 새로 만들거나 고친다. 저장에 실패하면 화면 목록도 바꾸지 않는다. */
+  async function saveVideo(v: Video) {
+    await storage.saveVideo(v)
+    const i = videos.value.findIndex((x) => x.id === v.id)
+    if (i >= 0) videos.value = videos.value.map((x) => (x.id === v.id ? v : x))
+    else videos.value = [...videos.value, v]
+  }
+  async function removeVideo(id: string) {
+    await storage.deleteVideo(id)
+    videos.value = videos.value.filter((x) => x.id !== id)
+    if (currentId.value === id) currentId.value = null
+  }
+  const videoById = (id: string) => videos.value.find((v) => v.id === id) ?? null
   const exprsOf = (videoId: string) => exprs.value.filter((e) => e.videoId === videoId)
   const itemsOf = (videoId: string) => items.value.filter((i) => i.videoId === videoId)
   const byId = (id: string) => index.value.map.get(id)
   /** 앱 안 영상 id → 유튜브 영상 id */
   const youtubeIdOf = (videoId: string) => videos.value.find((v) => v.id === videoId)?.youtubeId ?? videoId
 
-  return { videos, currentId, load, items, exprs, current, select, exprsOf, itemsOf, byId, youtubeIdOf }
+  return { videos, currentId, load, items, exprs, current, select, isSample, saveVideo, removeVideo, videoById, exprsOf, itemsOf, byId, youtubeIdOf }
 })

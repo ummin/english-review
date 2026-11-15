@@ -11,6 +11,13 @@ export const ICONS = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   play: '<path d="M8 5v14l11-7z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  share: '<path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v7h14v-7"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/>',
+  copy: '<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
+  download: '<path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 20h14"/>',
+  trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
   minus: '<path d="M5 12h14"/>',
 } as const
 

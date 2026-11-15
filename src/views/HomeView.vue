@@ -5,12 +5,14 @@ import Icon from '../components/Icon.vue'
 import { useLibraryStore } from '../stores/library'
 import { useProgressStore } from '../stores/progress'
 import { useSettingsStore } from '../stores/settings'
+import { useAuthStore } from '../stores/auth'
 import { addDays, dateKey, longDate, todayKey, WEEKDAYS } from '../lib/dates'
 
 const router = useRouter()
 const library = useLibraryStore()
 const progress = useProgressStore()
 const settings = useSettingsStore()
+const auth = useAuthStore()
 
 const C = 226.2
 const pct = computed(() => Math.min(1, progress.todayCount / settings.dailyGoal))
@@ -82,13 +84,24 @@ function openVideo(id: string) {
   </div>
 
   <h2 class="h">내 영상</h2>
+  <button class="cbtn blue wide" data-testid="add-video" @click="router.push('/video/new')"><Icon name="plus" />영상 추가</button>
   <div v-for="x in videos" :key="x.v.id" class="card video">
     <div class="cover"><Icon name="play" fill /></div>
     <div class="t">
       <h3>{{ x.v.title }}</h3>
       <div class="bar" role="progressbar" :aria-valuenow="x.pct" aria-valuemin="0" aria-valuemax="100" aria-label="공부한 문장 비율"><i :style="{ width: x.pct + '%' }" /></div>
       <small>문장 {{ x.total }}개 · 완료 {{ x.done }}개</small>
-      <button class="cbtn orange sm" @click="openVideo(x.v.id)">문장 보기</button>
+      <div class="btns">
+        <button class="cbtn orange sm" @click="openVideo(x.v.id)">문장 보기</button>
+        <button v-if="!library.isSample(x.v.id)" class="icon s" :aria-label="`${x.v.title} 편집`" @click="router.push(`/video/${x.v.id}`)"><Icon name="edit" /></button>
+        <button class="icon s" :aria-label="`${x.v.title} 공유`" @click="router.push(`/share/${x.v.id}`)"><Icon name="share" /></button>
+      </div>
     </div>
   </div>
+
+  <h2 class="h">내 정보</h2>
+  <button class="card who" style="text-align:left;flex-direction:row;cursor:pointer" data-testid="go-account" @click="router.push('/account')">
+    <span class="av"><Icon name="user" /></span>
+    <span><b>{{ auth.user ? auth.user.name : '로그인' }}</b><br /><small>{{ auth.user ? '내 계정 보기' : '어디서든 이어서 공부하기' }}</small></span>
+  </button>
 </template>
