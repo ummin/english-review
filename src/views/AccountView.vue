@@ -6,6 +6,7 @@ import { friendlyAuthError, useAuthStore } from '../stores/auth'
 import { useLibraryStore } from '../stores/library'
 import { useUiStore } from '../stores/ui'
 import { createSampleStorage } from '../storage/sample'
+import { describeCallbackError } from '../lib/authCallback'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -90,6 +91,8 @@ async function moveLocal() {
     <button class="icon" aria-label="뒤로" @click="router.back()"><Icon name="back" /></button>
     <h2>내 계정</h2>
   </div>
+
+  <p v-if="auth.callbackError && !auth.user" class="notice" role="alert" data-testid="callback-error">{{ describeCallbackError(auth.callbackError) }} <small>(오류 코드: {{ auth.callbackError }})</small></p>
 
   <template v-if="auth.user">
     <div class="card">

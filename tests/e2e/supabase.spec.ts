@@ -248,3 +248,31 @@ test('다른 브라우저에서 링크를 열어 확인 값이 없으면 로그�
   await expect(page.getByTestId('go-account')).toContainText('로그인')
   await expect(page.getByTestId('streak')).toBeVisible()
 })
+
+test('만료된 로그인 링크로 돌아오면 이유를 알려 주고 빈 화면이 되지 않는다', async ({ page }) => {
+  await page.goto('about:blank') // 메일 링크는 새로 열리는 것과 같다
+  await page.goto('/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired')
+  await expect(page.getByTestId('callback-error')).toContainText('이미 사용됐거나 시간이 지났어요')
+  await expect(page.getByTestId('callback-error')).toContainText('otp_expired')
+  expect(page.url()).toContain('#/account')
+  expect(page.url()).not.toContain('error')
+  await expect(page.getByTestId('email')).toBeVisible() // 바로 메일을 다시 받을 수 있다
+  await page.getByRole('tab', { name: '홈' }).click()
+  await expect(page.getByTestId('streak')).toBeVisible()
+})
+
+test('오류가 주소 검색부분(?error=)으로 와도 같게 처리한다', async ({ page }) => {
+  await page.goto('about:blank') // 메일 링크는 새로 열리는 것과 같다
+  await page.goto('/?error=access_denied&error_code=otp_expired#/')
+  await expect(page.getByTestId('callback-error')).toBeVisible()
+  expect(page.url()).not.toContain('error')
+})
+
+test('알 수 없는 주소나 이상한 해시는 홈으로 보낸다', async ({ page }) => {
+  await page.goto('about:blank') // 메일 링크는 새로 열리는 것과 같다
+  await page.goto('/#/zzz/unknown')
+  await expect(page.getByTestId('streak')).toBeVisible()
+  await page.goto('about:blank') // 메일 링크는 새로 열리는 것과 같다
+  await page.goto('/#access_token=abc&token_type=bearer')
+  await expect(page.getByTestId('callback-error')).toContainText('처리하지 못했어요')
+})

@@ -19,6 +19,7 @@ export const router = createRouter({
     { path: '/video/:id', name: 'video-edit', component: VideoEditView },
     { path: '/share/:id', name: 'share', component: ShareView },
     { path: '/account', name: 'account', component: AccountView },
+    { path: '/:pathMatch(.*)*', redirect: '/' }, // 알 수 없는 주소는 홈으로 (빈 화면 방지)
   ],
   scrollBehavior: () => ({ top: 0 }),
 })

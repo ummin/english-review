@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabase } from '../lib/supabase'
+import { authCallbackError } from '../lib/authCallback'
 import { setStorage } from '../storage'
 import { createSampleStorage } from '../storage/sample'
 import { createSupabaseStorage } from '../storage/supabase'
@@ -22,6 +23,8 @@ export function friendlyAuthError(e: unknown): string {
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
+  /** 메일 링크로 돌아왔을 때 실패했다면 그 이유(오류 코드) */
+  const callbackError = ref<string | null>(authCallbackError)
   const loggedIn = computed(() => !!user.value)
   let started = false
 
@@ -74,5 +77,5 @@ export const useAuthStore = defineStore('auth', () => {
     apply(null)
   }
 
-  return { user, loggedIn, init, requestCode, verifyCode, signOut }
+  return { user, callbackError, loggedIn, init, requestCode, verifyCode, signOut }
 })
