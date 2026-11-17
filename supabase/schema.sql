@@ -62,3 +62,14 @@ drop trigger if exists touch_settings on public.settings;
 create trigger touch_videos   before update on public.videos   for each row execute function public.touch_updated_at();
 create trigger touch_progress before update on public.progress for each row execute function public.touch_updated_at();
 create trigger touch_settings before update on public.settings for each row execute function public.touch_updated_at();
+
+-- ===== 8단계: 공유 링크 (이 아래만 새로 실행해도 된다) =====
+-- 공유 코드를 아는 로그인한 사람만 그 영상 한 편(제목·유튜브·카드)을 읽는다. 목록 조회는 불가능하다.
+create or replace function public.get_shared_video(code text)
+returns table(title text, youtube_id text, cards jsonb)
+language sql stable security definer set search_path = public as $$
+  select v.title, v.youtube_id, v.cards from public.videos v
+  where v.share_id is not null and v.share_id = code limit 1
+$$;
+revoke all on function public.get_shared_video(text) from public, anon;
+grant execute on function public.get_shared_video(text) to authenticated;

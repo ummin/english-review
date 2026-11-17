@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterView } from 'vue-router'
+import { RouterView, useRouter } from 'vue-router'
+import { takeReturn } from './lib/returnTo'
 import TopBar from './components/TopBar.vue'
 import LoginGate from './views/LoginGate.vue'
 import { REQUIRE_LOGIN } from './lib/config'
@@ -18,6 +19,7 @@ import { useAuthStore } from './stores/auth'
 const ui = useUiStore()
 const auth = useAuthStore()
 const player = usePlayerStore()
+const router = useRouter()
 const ready = ref(false)
 const authReady = ref(false)
 /** 로그인이 필요한 앱이라, 로그인하기 전에는 로그인 화면만 보인다. */
@@ -32,6 +34,7 @@ async function loadAll() {
   try {
     await Promise.all([useLibraryStore().load(), useProgressStore().load(), useSettingsStore().load()])
     ready.value = true
+    if (auth.user) { const back = takeReturn(); if (back) void router.replace(back) }
   } catch {
     failed.value = true
   }

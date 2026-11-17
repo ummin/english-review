@@ -276,13 +276,10 @@ test('공유: 이상한 파일을 고르면 안내만 하고 앱은 멀쩡하다
   await expect(page.getByRole('alert').filter({ hasText: '파일이 너무 커요' })).toBeVisible()
 })
 
-test('공유 링크는 미리보기로만 보이고, 켜면 주소가 나오고 복사는 막혀 있다', async ({ page }) => {
+test('로그인하지 않으면 공유 링크 대신 로그인 안내가 나온다', async ({ page }) => {
   await page.getByRole('button', { name: /샘플.*공유/ }).click()
-  await expect(page.getByTestId('share-preview-note')).toContainText('미리보기')
-  await expect(page.getByTestId('link')).toHaveCount(0)
-  await page.getByTestId('link-switch').check()
-  await expect(page.getByTestId('link')).toHaveValue(/#\/s\/[a-z0-9]{8}$/)
-  await expect(page.getByRole('button', { name: /링크 복사/ })).toBeDisabled()
+  await expect(page.getByTestId('share-link-off')).toContainText('로그인')
+  await expect(page.getByTestId('link-switch')).toHaveCount(0)
   expect(await overflow(page)).toBeLessThanOrEqual(0)
 })
 

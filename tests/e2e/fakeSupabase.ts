@@ -13,6 +13,7 @@ export interface Fake {
   otpRequests: string[]
   verifyRequests: { email: string; token: string }[]
   restCalls: { method: string; path: string; authed: boolean }[]
+  rpcCalls: string[]
   failRest: boolean // true 면 REST 요청이 모두 500
   otpError: null | { status: number; code: string; msg: string }
   oauthRequests: { provider: string | null; redirectTo: string | null; scopes: string | null }[]
@@ -34,7 +35,7 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const json = (route: Route, status: number, body: unknown) => route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(body) })
 
 export async function installFakeSupabase(page: Page): Promise<Fake> {
-  const fake: Fake = { tables: { videos: [], progress: [], settings: [] }, otpRequests: [], verifyRequests: [], restCalls: [], failRest: false, otpError: null, oauthRequests: [], oauthResult: 'ok', oauthUser: { email: 'g@example.com', name: '홍길동' }, nextUserId: 'user-1' }
+  const fake: Fake = { tables: { videos: [], progress: [], settings: [] }, otpRequests: [], verifyRequests: [], restCalls: [], rpcCalls: [], failRest: false, otpError: null, oauthRequests: [], oauthResult: 'ok', oauthUser: { email: 'g@example.com', name: '홍길동' }, nextUserId: 'user-1' }
   const emailToId = new Map<string, string>()
 
   await page.route(`${HOST}/**`, async (route) => {
@@ -80,6 +81,13 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
     if (path === '/auth/v1/user') return json(route, 200, userOf('user-1', 'a@b.c'))
 
     // ---- 데이터(PostgREST 흉내) ----
+    if (path === '/rest/v1/rpc/get_shared_video') {
+      if (!subOf(req.headers()['authorization'])) return json(route, 401, { code: '42501', message: 'permission denied for function get_shared_video' })
+      if (fake.failRest) return json(route, 500, { message: 'server down' })
+      fake.rpcCalls.push(body.code)
+      const hit = fake.tables.videos!.find((r) => r.share_id && r.share_id === body.code)
+      return json(route, 200, hit ? [{ title: hit.title, youtube_id: hit.youtube_id, cards: hit.cards }] : [])
+    }
     const m = path.match(/^\/rest\/v1\/(videos|progress|settings)$/)
     if (!m) return json(route, 404, { message: 'not found: ' + path })
     const table = m[1]!
@@ -109,6 +117,11 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
         else fake.tables[table]!.push({ ...r })
       }
       return route.fulfill({ status: 201, headers: CORS })
+    }
+    if (method === 'PATCH') {
+      if (fake.failRest) return json(route, 500, { message: 'server down' })
+      for (const r of mine().filter(match)) Object.assign(r, body)
+      return route.fulfill({ status: 204, headers: CORS })
     }
     if (method === 'DELETE') {
       const del = new Set(mine().filter(match))

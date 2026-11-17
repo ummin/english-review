@@ -93,6 +93,7 @@ async function save() {
     youtubeId: ytId.value!,
     title: title.value.trim(),
     createdAt: original?.createdAt ?? Date.now(),
+    ...(original?.shareId ? { shareId: original.shareId } : {}),
     cards: cards.value.map((c) => ({ ...c, en: c.en.trim(), ko: c.ko.trim(), note: c.note.trim(), subs: c.subs.map((s) => ({ ...s, en: s.en.trim(), ko: s.ko.trim() })) })),
   }
   try {

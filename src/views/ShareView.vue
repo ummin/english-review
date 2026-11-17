@@ -4,17 +4,39 @@ import { useRoute, useRouter } from 'vue-router'
 import Icon from '../components/Icon.vue'
 import { useLibraryStore } from '../stores/library'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
+import { copyText } from '../lib/clipboard'
 import { fileNameFor, toCardFile } from '../lib/cardfile'
 
 const route = useRoute()
 const router = useRouter()
 const library = useLibraryStore()
 const ui = useUiStore()
+const auth = useAuthStore()
 
 const video = computed(() => library.videoById(String(route.params.id ?? '')))
-const linkOn = ref(false)
-/** 미리보기용 주소. 실제로는 8단계에서 만들어진다. */
-const fakeLink = computed(() => `${location.origin}${import.meta.env.BASE_URL}#/s/${(video.value?.id ?? '').toLowerCase().slice(-8).padStart(8, 'x')}`)
+const canLink = computed(() => auth.loggedIn && !!video.value && !library.isSample(video.value.id))
+const code = computed(() => video.value?.shareId ?? null)
+const link = computed(() => (code.value ? `${location.origin}${import.meta.env.BASE_URL}#/s/${code.value}` : ''))
+const busy = ref(false)
+async function toggleLink(e: Event) {
+  const input = e.target as HTMLInputElement
+  const on = input.checked
+  if (!video.value) return
+  busy.value = true
+  try {
+    await library.setShare(video.value.id, on)
+    ui.say(on ? '공유 링크를 만들었어요.' : '공유를 중단했어요. 이 링크는 더 이상 열리지 않아요.')
+  } catch {
+    input.checked = !on
+    ui.say('바꾸지 못했어요. 인터넷 연결을 확인해 주세요.')
+  } finally {
+    busy.value = false
+  }
+}
+async function copyLink() {
+  ui.say((await copyText(link.value)) ? '링크를 복사했어요.' : '복사하지 못했어요. 주소를 길게 눌러 직접 복사해 주세요.')
+}
 
 function download() {
   const v = video.value
@@ -54,12 +76,14 @@ function download() {
 
     <section class="card sec" aria-labelledby="sh2">
       <h3 id="sh2"><Icon name="share" />공유 링크</h3>
-      <p class="notice info" data-testid="share-preview-note">미리보기 화면이에요. 링크는 로그인과 저장소를 연결하는 단계에서 실제로 만들어져요.</p>
-      <label class="switch"><input v-model="linkOn" type="checkbox" role="switch" data-testid="link-switch" />링크로 공유하기</label>
-      <template v-if="linkOn">
-        <div class="linkbox"><input type="text" readonly :value="fakeLink" aria-label="공유 링크(미리보기)" data-testid="link" /></div>
-        <button class="cbtn white wide" disabled><Icon name="copy" />링크 복사 (준비 중)</button>
-        <p>링크를 열면 로그인하지 않아도 카드를 보고, 내 복습장에 담을 수 있게 할 예정이에요.</p>
+      <p v-if="!canLink" class="notice info" data-testid="share-link-off">{{ auth.loggedIn ? '샘플 영상은 링크로 공유할 수 없어요.' : '로그인하면 공유 링크를 만들 수 있어요.' }}</p>
+      <template v-else>
+        <label class="switch"><input type="checkbox" role="switch" :checked="!!code" :disabled="busy" data-testid="link-switch" @change="toggleLink" />링크로 공유하기</label>
+        <template v-if="code">
+          <div class="linkbox"><input type="text" readonly :value="link" aria-label="공유 링크" data-testid="link" @focus="($event.target as HTMLInputElement).select()" /></div>
+          <button class="cbtn white wide" data-testid="copy-link" @click="copyLink"><Icon name="copy" />링크 복사</button>
+          <p>링크를 받은 사람은 <b>로그인한 뒤</b> 카드를 보고 내 복습장에 담을 수 있어요. 링크를 아는 사람이면 누구나 볼 수 있으니 필요한 사람에게만 보내 주세요. 끄면 링크가 바로 닫혀요.</p>
+        </template>
       </template>
     </section>
   </template>

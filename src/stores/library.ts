@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { storage } from '../storage'
 import { buildIndex } from '../lib/items'
+import { uid } from '../lib/id'
 import { sampleVideo } from '../data/sample'
 import type { Video } from '../types'
 
@@ -37,6 +38,17 @@ export const useLibraryStore = defineStore('library', () => {
     videos.value = videos.value.filter((x) => x.id !== id)
     if (currentId.value === id) currentId.value = null
   }
+  /** 공유 링크를 켜면 코드를, 끄면 null 을 돌려준다. 저장에 실패하면 화면도 바꾸지 않는다. */
+  async function setShare(id: string, on: boolean): Promise<string | null> {
+    const code = on ? (videoById(id)?.shareId ?? uid(12)) : null
+    await storage.setShare(id, code)
+    videos.value = videos.value.map((v) => {
+      if (v.id !== id) return v
+      const { shareId: _drop, ...rest } = v
+      return code ? { ...rest, shareId: code } : rest
+    })
+    return code
+  }
   const videoById = (id: string) => videos.value.find((v) => v.id === id) ?? null
   const exprsOf = (videoId: string) => exprs.value.filter((e) => e.videoId === videoId)
   const itemsOf = (videoId: string) => items.value.filter((i) => i.videoId === videoId)
@@ -44,5 +56,5 @@ export const useLibraryStore = defineStore('library', () => {
   /** 앱 안 영상 id → 유튜브 영상 id */
   const youtubeIdOf = (videoId: string) => videos.value.find((v) => v.id === videoId)?.youtubeId ?? videoId
 
-  return { videos, currentId, load, items, exprs, current, select, isSample, saveVideo, removeVideo, videoById, exprsOf, itemsOf, byId, youtubeIdOf }
+  return { videos, currentId, load, items, exprs, current, select, isSample, saveVideo, removeVideo, setShare, videoById, exprsOf, itemsOf, byId, youtubeIdOf }
 })

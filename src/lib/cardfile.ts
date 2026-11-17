@@ -171,3 +171,16 @@ export function fileNameFor(title: string): string {
   const base = title.replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'cards'
   return `${base}.cards.json`
 }
+
+/**
+ * 공유로 받은 영상을 내 영상으로 담을 준비를 한다.
+ * 남이 만든 데이터이므로 카드 파일과 똑같은 검사를 거치고, 새 id 를 붙인다. 쓸 수 없으면 null.
+ */
+export function importShared(s: { title: string; youtubeId: string; cards: Card[] }): Video | null {
+  const r = parseCardFile(toCardFile(s))
+  if (!r.ok) return null
+  const yt = parseYoutubeId(s.youtubeId)
+  if (!yt) return null
+  const id = `v${uid(8)}`
+  return { id, youtubeId: yt, title: (s.title || r.data.title || '공유받은 영상').slice(0, 100), createdAt: Date.now(), cards: withIds(id, r.data.cards) }
+}

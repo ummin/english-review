@@ -61,6 +61,12 @@ export function createSampleStorage(): AppStorage {
       const mine = (read<unknown[]>(K_VIDEOS) ?? []).filter(isVideo).filter((x) => x.id !== id)
       write(K_VIDEOS, mine)
     },
+    async setShare() {
+      throw new Error('로그인이 필요해요')
+    },
+    async getShared() {
+      return null
+    },
     async loadProgress() {
       return read<Record<string, ProgressRecord>>(K_PROGRESS) ?? seed()
     },

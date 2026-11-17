@@ -19,8 +19,8 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   projects: [
-    { name: 'local', testIgnore: /gate\.spec/, use: { baseURL: 'http://localhost:4173/' } },
-    { name: 'gate', testMatch: /gate\.spec/, use: { baseURL: 'http://localhost:4174/' } },
+    { name: 'local', testIgnore: /(gate|share)\.spec/, use: { baseURL: 'http://localhost:4173/' } },
+    { name: 'gate', testMatch: /(gate|share)\.spec/, use: { baseURL: 'http://localhost:4174/' } },
   ],
   webServer: [
     {

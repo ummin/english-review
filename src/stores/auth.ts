@@ -1,3 +1,4 @@
+import { rememberReturn } from '../lib/returnTo'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Session } from '@supabase/supabase-js'
@@ -83,6 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
   /** Google·카카오 로그인. 해당 서비스의 로그인 화면으로 이동했다가 이 앱으로 돌아온다. */
   async function signInWith(provider: OAuthProvider) {
+    rememberReturn()
     const { error } = await getSupabase().auth.signInWithOAuth({
       provider,
       options: {

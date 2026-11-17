@@ -1,14 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sampleVideo } from '../data/sample'
-import type { Card, ProgressRecord, Settings, Video } from '../types'
+import type { Card, ProgressRecord, Settings, SharedVideo, Video } from '../types'
 import type { AppStorage } from './types'
 
 /** DB 한 줄 ↔ 앱 데이터 변환 (순수 함수라 따로 테스트한다) */
-export interface VideoRow { id: string; youtube_id: string; title: string; created_ms: number; cards: Card[] }
+export interface VideoRow { id: string; youtube_id: string; title: string; created_ms: number; cards: Card[]; share_id?: string | null }
 export interface ProgressRow { card_id: string; video_id: string; dates: string[]; star: boolean; offset_sec: number }
 
 export const videoToRow = (userId: string, v: Video) => ({ user_id: userId, id: v.id, youtube_id: v.youtubeId, title: v.title, created_ms: v.createdAt, cards: v.cards })
-export const rowToVideo = (r: VideoRow): Video => ({ id: r.id, youtubeId: r.youtube_id, title: r.title, createdAt: Number(r.created_ms), cards: Array.isArray(r.cards) ? r.cards : [] })
+export const rowToVideo = (r: VideoRow): Video => ({ id: r.id, youtubeId: r.youtube_id, title: r.title, createdAt: Number(r.created_ms), cards: Array.isArray(r.cards) ? r.cards : [], ...(r.share_id ? { shareId: r.share_id } : {}) })
 export const progressToRow = (userId: string, cardId: string, p: ProgressRecord) => ({ user_id: userId, card_id: cardId, video_id: p.videoId, dates: p.dates, star: p.star, offset_sec: p.offset })
 export const rowToProgress = (r: ProgressRow): ProgressRecord => ({ videoId: r.video_id, dates: Array.isArray(r.dates) ? [...r.dates].sort() : [], star: !!r.star, offset: Number(r.offset_sec) || 0 })
 
@@ -24,7 +24,7 @@ export function createSupabaseStorage(client: SupabaseClient, userId: string): A
     async loadVideos() {
       const rows: VideoRow[] = []
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await client.from('videos').select('id,youtube_id,title,created_ms,cards').order('created_ms').order('id').range(from, from + PAGE - 1)
+        const { data, error } = await client.from('videos').select('id,youtube_id,title,created_ms,cards,share_id').order('created_ms').order('id').range(from, from + PAGE - 1)
         fail('영상 불러오기', error)
         rows.push(...(data as VideoRow[]))
         if (data.length < PAGE) break
@@ -38,6 +38,18 @@ export function createSupabaseStorage(client: SupabaseClient, userId: string): A
     async deleteVideo(id) {
       const { error } = await client.from('videos').delete().eq('user_id', userId).eq('id', id)
       fail('영상 삭제', error)
+    },
+    async setShare(videoId, shareId) {
+      const { error } = await client.from('videos').update({ share_id: shareId }).eq('user_id', userId).eq('id', videoId)
+      fail('공유 설정', error)
+    },
+    async getShared(code) {
+      const { data, error } = await client.rpc('get_shared_video', { code })
+      fail('공유 영상 불러오기', error)
+      const r = (data as { title: string; youtube_id: string; cards: Card[] }[] | null)?.[0]
+      if (!r) return null
+      const out: SharedVideo = { title: r.title, youtubeId: r.youtube_id, cards: Array.isArray(r.cards) ? r.cards : [] }
+      return out
     },
     async loadProgress() {
       const out: Record<string, ProgressRecord> = {}

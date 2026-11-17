@@ -28,6 +28,15 @@ export interface Video {
   title: string
   createdAt: number
   cards: Card[]
+  /** 공유 링크 코드. 없으면 공유하지 않는 영상 */
+  shareId?: string
+}
+
+/** 공유 링크로 받은 영상(내 기록 없음) */
+export interface SharedVideo {
+  title: string
+  youtubeId: string
+  cards: Card[]
 }
 
 /** 카드 하나(질문 또는 대답)에 대한 내 기록 */
