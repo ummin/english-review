@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterView } from 'vue-router'
 import TopBar from './components/TopBar.vue'
+import LoginGate from './views/LoginGate.vue'
+import { REQUIRE_LOGIN } from './lib/config'
 import TabBar from './components/TabBar.vue'
 import PlayerPanel from './components/PlayerPanel.vue'
 import { usePlayerStore } from './stores/player'
@@ -17,6 +19,9 @@ const ui = useUiStore()
 const auth = useAuthStore()
 const player = usePlayerStore()
 const ready = ref(false)
+const authReady = ref(false)
+/** 로그인이 필요한 앱이라, 로그인하기 전에는 로그인 화면만 보인다. */
+const gated = computed(() => REQUIRE_LOGIN && !auth.user)
 const failed = ref(false)
 
 // 복습 카드 화면이 열리고 닫힐 때는 플레이어도 멈춘다. (카드 안에 따로 열린다)
@@ -34,21 +39,25 @@ async function loadAll() {
 
 onMounted(async () => {
   await auth.init() // 저장된 로그인을 먼저 확인해야 알맞은 저장소에서 데이터를 불러온다
-  await loadAll()
+  authReady.value = true
+  if (!gated.value) await loadAll()
 })
 
 // 로그인·로그아웃으로 사용자가 바뀌면 그 사람의 데이터를 다시 불러온다.
 watch(() => auth.user?.id, async () => {
-  if (!ready.value && !failed.value) return
+  if (!authReady.value) return
   player.close()
   ready.value = false
+  failed.value = false
+  if (gated.value) return // 로그아웃: 데이터를 불러오지 않고 로그인 화면으로
   await loadAll()
 })
 </script>
 
 <template>
   <div class="app" :class="{ 'hide-en': ui.hideEn, 'hide-ko': ui.hideKo }">
-    <template v-if="ready">
+    <LoginGate v-if="authReady && gated" />
+    <template v-else-if="ready">
       <div class="sticky-head">
         <TopBar />
         <PlayerPanel v-if="player.open && ui.overlay !== 'review'" />

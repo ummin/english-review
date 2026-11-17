@@ -59,3 +59,6 @@ npm run build        # 배포 파일(dist) 만들기
 - Supabase 대시보드 → Authentication → Providers 에서 Google/Kakao 를 켜고 Client ID/Secret 을 넣는다. (비밀 값은 대시보드에만 입력)
 - 각 서비스 콘솔에 등록할 Redirect URI: `https://blysqzzhuidlqpwjczzw.supabase.co/auth/v1/callback`
 - 카카오는 이메일 권한이 없어도 되도록 닉네임만 요청하고, Supabase 에서 "Allow users without an email" 을 켠다.
+
+## 로그인 필수 (게이트)
+로그아웃 상태에서는 로그인 화면만 보이고 앱·데이터 요청이 일절 없습니다 (`VITE_REQUIRE_LOGIN=false`로 빌드하면 해제, e2e `local` 프로젝트가 사용). 테스트는 `local`(4173)·`gate`(4174) 두 빌드로 나뉩니다.
