@@ -75,3 +75,12 @@ npm run build        # 배포 파일(dist) 만들기
 - **계정 삭제**: 내 계정 → 계정 삭제(“삭제” 입력 필요). DB 함수 `delete_my_account()`가 본인 `auth.users` 행만 지우고 영상·기록·설정·공유 링크는 cascade 로 함께 삭제됩니다. 먼저 `supabase/schema.sql` 맨 아래 "9단계" 블록을 SQL Editor에서 실행하세요.
 - **공개 페이지**: `public/privacy.html`, `public/terms.html`(로그인 없이 열림, Google 앱 게시 요건). 로그인 화면에 앱 소개와 두 링크가 있습니다. 문의 메일: yhoo13579@gmail.com
 - **Google 앱 게시 입력값**: 앱 이름 `영어회화 복습장`, 홈페이지 `https://ummin.github.io/english-review/`, 개인정보처리방침 `…/privacy.html`, 약관 `…/terms.html`, 승인된 도메인 `ummin.github.io`, 로고는 비움(브랜드 인증 회피).
+- **홈 화면 추가**: `public/manifest.webmanifest` + 아이콘(주황 말풍선 EN). 사파리 → 공유 → "홈 화면에 추가".
+
+## 운영 체크리스트
+1. Supabase SQL: `supabase/schema.sql` 전체(5·8·9단계 블록)를 실행해 둔다.
+2. Supabase → Authentication → URL Configuration: Site URL/Redirect URLs = `https://ummin.github.io/english-review/`
+3. Google Auth Platform: 앱 게시(Publish app) 상태, 리디렉션 URI = `https://<프로젝트>.supabase.co/auth/v1/callback`
+4. 배포: `main` 푸시 → GitHub Actions(타입검사 → 단위 → e2e → 빌드 → Pages)
+5. 비밀 값(Google 클라이언트 시크릿, DB 비밀번호, service_role 키)은 저장소·채팅에 넣지 않는다. 앱에는 공개용 publishable 키만 들어 있다.
+6. 정기적으로 내 계정 → 백업 파일 저장.

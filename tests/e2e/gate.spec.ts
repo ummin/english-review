@@ -146,3 +146,12 @@ test('로그인 화면을 다시 불러오기 전 잠깐은 앱 내용이 아니
   await expect(page.getByRole('tablist')).toHaveCount(0)
   await expect(gate(page)).toBeVisible()
 })
+
+test('홈 화면에 추가할 수 있도록 매니페스트와 아이콘이 있다', async ({ page, request }) => {
+  await page.goto('/')
+  const href = await page.locator('link[rel=manifest]').getAttribute('href')
+  const m = await (await request.get(new URL(href!, page.url()).toString())).json()
+  expect(m).toMatchObject({ name: '영어회화 복습장', display: 'standalone' })
+  for (const i of m.icons) expect((await request.get(new URL(i.src, new URL(href!, page.url())).toString())).status()).toBe(200)
+  expect((await request.get(new URL(await page.locator('link[rel=apple-touch-icon]').getAttribute('href') as string, page.url()).toString())).status()).toBe(200)
+})

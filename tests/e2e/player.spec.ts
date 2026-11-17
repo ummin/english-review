@@ -156,7 +156,7 @@ test.describe('카드 복습 안에서 재생', () => {
     const foot = await dialog.locator('.rfoot').boundingBox()
     expect(box!.y + box!.height).toBeLessThanOrEqual(foot!.y + 1)
     expect(box!.y).toBeGreaterThanOrEqual(0)
-    expect((await loads(page)).length).toBe(1)
+    await expect.poll(async () => (await loads(page)).length).toBe(1)
   })
 
   test('다시 볼래요를 누르면 같은 카드에서 구간이 다시 재생되고 정답은 가려진다', async ({ page }) => {
