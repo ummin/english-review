@@ -233,3 +233,18 @@ test('로그인 화면이 가로로 넘치지 않는다', async ({ page }) => {
   await page.getByTestId('email').fill('아주아주아주긴이메일아주아주아주긴이메일@example-domain-that-is-very-long.com')
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 })
+
+test('메일 링크(?code=)로 돌아오면 로그인되고 주소가 깨끗해진다', async ({ page }) => {
+  // 로그인 메일을 요청했던 브라우저라면 이 값이 이미 저장돼 있다(PKCE)
+  await page.addInitScript(() => localStorage.setItem('er-auth-code-verifier', JSON.stringify('v'.repeat(60))))
+  await page.goto('/?code=fakecode123')
+  await page.getByTestId('go-account').click()
+  await expect(page.getByTestId('who-name')).toHaveText('a@b.c')
+  expect(page.url()).not.toContain('code=')
+})
+
+test('다른 브라우저에서 링크를 열어 확인 값이 없으면 로그인되지 않지만 앱은 멀쩡하다', async ({ page }) => {
+  await page.goto('/?code=fakecode123')
+  await expect(page.getByTestId('go-account')).toContainText('로그인')
+  await expect(page.getByTestId('streak')).toBeVisible()
+})

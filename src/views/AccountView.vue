@@ -109,18 +109,19 @@ async function moveLocal() {
   <template v-else>
     <div class="card sec">
       <h3>이메일로 로그인</h3>
-      <p>이메일로 받은 인증 코드를 입력하면 로그인돼요. 처음이면 자동으로 계정이 만들어져요.</p>
+      <p>이메일로 받은 링크를 누르면 로그인돼요. 처음이면 자동으로 계정이 만들어져요.</p>
       <template v-if="stage === 'email'">
         <label class="f">이메일<input v-model="email" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="name@example.com" data-testid="email" @keyup.enter="sendCode" /></label>
         <p v-if="email && !emailOk" class="field-msg bad" role="status">이메일 형식을 확인해 주세요.</p>
-        <button class="cbtn blue wide" :disabled="!emailOk || busy" data-testid="send-code" @click="sendCode">{{ busy ? '보내는 중…' : '인증 코드 받기' }}</button>
+        <button class="cbtn blue wide" :disabled="!emailOk || busy" data-testid="send-code" @click="sendCode">{{ busy ? '보내는 중…' : '로그인 메일 받기' }}</button>
       </template>
       <template v-else>
-        <p class="notice ok" role="status" data-testid="code-sent">{{ email }} 로 코드를 보냈어요. 메일이 안 보이면 스팸함도 확인해 주세요.</p>
-        <label class="f">인증 코드<input v-model="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="숫자 코드" data-testid="code" @keyup.enter="verify" /></label>
+        <p class="notice ok" role="status" data-testid="code-sent">{{ email }} 로 메일을 보냈어요. 메일의 <b>링크를 누르면</b> 바로 로그인돼요. (지금 쓰는 이 브라우저에서 열어 주세요. 안 보이면 스팸함도 확인해 주세요.)</p>
+        <p class="hintp" style="margin:0;font-size:13px;color:var(--muted)">메일에 숫자 코드가 있다면 아래에 입력해도 돼요.</p>
+        <label class="f">인증 코드 (있을 때만)<input v-model="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="숫자 코드" data-testid="code" @keyup.enter="verify" /></label>
         <button class="cbtn wide" :disabled="!codeOk || busy" data-testid="verify" @click="verify">{{ busy ? '확인 중…' : '로그인' }}</button>
         <div class="btnrow">
-          <button class="cbtn white" :disabled="!!cooldown || busy" data-testid="resend" @click="sendCode">{{ cooldown ? `다시 보내기 (${cooldown}초)` : '코드 다시 받기' }}</button>
+          <button class="cbtn white" :disabled="!!cooldown || busy" data-testid="resend" @click="sendCode">{{ cooldown ? `다시 보내기 (${cooldown}초)` : '메일 다시 받기' }}</button>
           <button class="cbtn white" data-testid="change-email" @click="stage = 'email'; error = ''">이메일 바꾸기</button>
         </div>
       </template>

@@ -15,7 +15,7 @@ export function friendlyAuthError(e: unknown): string {
   const status = (e as { status?: number } | null)?.status
   if (code === 'over_email_send_rate_limit' || status === 429 || /rate limit/i.test(m)) return '메일을 너무 자주 보냈어요. 잠시(몇 분) 뒤에 다시 시도해 주세요.'
   if (/email address not authorized/i.test(m)) return '이 이메일로는 아직 코드를 보낼 수 없어요. 계정 주인 이메일로 시도해 주세요.'
-  if (code === 'otp_expired' || /expired|invalid/i.test(m)) return '코드가 맞지 않거나 시간이 지났어요. 코드를 다시 받아 주세요.'
+  if (code === 'otp_expired' || /expired|invalid/i.test(m)) return '코드가 맞지 않거나 시간이 지났어요. 메일을 다시 받아 주세요.'
   if (/fetch|network|failed to/i.test(m)) return '인터넷 연결을 확인하고 다시 시도해 주세요.'
   return '문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.'
 }
