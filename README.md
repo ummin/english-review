@@ -44,3 +44,11 @@ npm run build        # 배포 파일(dist) 만들기
 - `#/account`: Google·카카오·이메일 로그인은 **가짜 미리보기**. 5~6단계에서 Supabase로 교체
 - 저장은 아직 브라우저(localStorage)이며, `AppStorage` 구현만 바꾸면 5단계에서 DB로 옮겨진다.
 - 카드 파일 형식과 프롬프트: `src/lib/cardfile.ts`, `src/lib/prompt.ts` (프롬프트 예시가 실제 파서로 검증된다)
+
+## 5단계: Supabase 연결
+
+- 표·보안 규칙: `supabase/schema.sql` (SQL Editor에서 한 번 실행. 여러 번 실행해도 안전)
+- 로그인 전: 이 기기(localStorage) 저장 / 로그인 후: Supabase 저장 (`src/storage/index.ts`에서 전환)
+- 이메일 로그인은 링크 대신 **인증 코드**를 입력하는 방식 (메일 앱이 다른 브라우저로 열어도 동작)
+- 키: `src/lib/supabase.ts` (공개용 publishable 키만. secret/service_role 키는 절대 넣지 않는다)
+- 테스트: `tests/e2e/fakeSupabase.ts` 가 실제 서버 대신 답하는 가짜 서버 (RLS 흉내 포함)

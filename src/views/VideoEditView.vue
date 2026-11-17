@@ -5,6 +5,7 @@ import Icon from '../components/Icon.vue'
 import DraftCardList from '../components/DraftCardList.vue'
 import { useLibraryStore } from '../stores/library'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 import { buildPrompt } from '../lib/prompt'
 import { copyText } from '../lib/clipboard'
 import { parseCardFile, parseYoutubeId, withIds, type ParseResult } from '../lib/cardfile'
@@ -15,6 +16,7 @@ const route = useRoute()
 const router = useRouter()
 const library = useLibraryStore()
 const ui = useUiStore()
+const auth = useAuthStore()
 
 const editId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
 const original = editId.value ? library.videoById(editId.value) : null
@@ -127,6 +129,7 @@ async function remove() {
   <div v-if="blocked" class="empty" role="alert"><strong>{{ blocked }}</strong><button class="cbtn blue sm" style="margin:8px auto 0" @click="router.push('/')">홈으로</button></div>
 
   <template v-else>
+    <p v-if="!auth.loggedIn" class="notice" data-testid="local-notice">로그인하지 않으면 이 기기에만 저장돼요. 로그인하면 다른 저장소로 바뀌어 지금 만든 영상은 보이지 않아요. (내 계정 화면에서 옮길 수 있어요)</p>
     <section class="card sec" aria-labelledby="s1">
       <h3 id="s1"><span class="no">1</span>영상 정보</h3>
       <label class="f">제목<input v-model="title" type="text" maxlength="100" placeholder="예: 공항에서 쓰는 영어" data-testid="title" /></label>

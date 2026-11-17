@@ -1,32 +1,78 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { Session } from '@supabase/supabase-js'
+import { getSupabase } from '../lib/supabase'
+import { setStorage } from '../storage'
+import { createSampleStorage } from '../storage/sample'
+import { createSupabaseStorage } from '../storage/supabase'
 
-export type Provider = 'google' | 'kakao' | 'email'
-export interface FakeUser { provider: Provider; name: string; email: string }
+export interface User { id: string; email: string }
 
-const K = 'er-sample:user'
-const load = (): FakeUser | null => {
-  try {
-    const v = JSON.parse(localStorage.getItem(K) ?? 'null')
-    return v && typeof v.name === 'string' && ['google', 'kakao', 'email'].includes(v.provider) ? v : null
-  } catch { return null }
+/** Supabase 오류를 사람이 읽을 말로 바꾼다. */
+export function friendlyAuthError(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e ?? '')
+  const code = (e as { code?: string; status?: number } | null)?.code ?? ''
+  const status = (e as { status?: number } | null)?.status
+  if (code === 'over_email_send_rate_limit' || status === 429 || /rate limit/i.test(m)) return '메일을 너무 자주 보냈어요. 잠시(몇 분) 뒤에 다시 시도해 주세요.'
+  if (/email address not authorized/i.test(m)) return '이 이메일로는 아직 코드를 보낼 수 없어요. 계정 주인 이메일로 시도해 주세요.'
+  if (code === 'otp_expired' || /expired|invalid/i.test(m)) return '코드가 맞지 않거나 시간이 지났어요. 코드를 다시 받아 주세요.'
+  if (/fetch|network|failed to/i.test(m)) return '인터넷 연결을 확인하고 다시 시도해 주세요.'
+  return '문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.'
 }
 
-/**
- * 로그인 "미리보기"용 가짜 구현이다. 실제 계정과 연결되지 않고 이 기기에만 표시를 남긴다.
- * 5~6단계에서 Supabase 로그인으로 바꾼다.
- */
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<FakeUser | null>(load())
+  const user = ref<User | null>(null)
   const loggedIn = computed(() => !!user.value)
-  function signIn(provider: Provider, email = '') {
-    const names = { google: 'Google 사용자', kakao: '카카오 사용자', email: email.split('@')[0] || '이메일 사용자' }
-    user.value = { provider, name: names[provider], email }
-    try { localStorage.setItem(K, JSON.stringify(user.value)) } catch { /* 무시 */ }
+  let started = false
+
+  /** 세션에 맞는 저장소로 바꾼 뒤 사용자 상태를 갱신한다. */
+  function apply(session: Session | null) {
+    const u = session?.user
+    if (u) {
+      setStorage(createSupabaseStorage(getSupabase(), u.id))
+      if (user.value?.id !== u.id) user.value = { id: u.id, email: u.email ?? '' }
+    } else {
+      setStorage(createSampleStorage())
+      user.value = null
+    }
   }
-  function signOut() {
-    user.value = null
-    try { localStorage.removeItem(K) } catch { /* 무시 */ }
+
+  /** 앱이 시작될 때 한 번: 저장된 로그인 확인 + 이후 변화 구독 */
+  async function init() {
+    if (started) return
+    started = true
+    const sb = getSupabase()
+    try {
+      const { data } = await sb.auth.getSession()
+      apply(data.session)
+    } catch {
+      apply(null)
+    }
+    // 콜백 안에서 다른 Supabase 호출을 기다리면 멈출 수 있어, 상태만 바꾼다.
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') apply(null)
+      else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') apply(session)
+    })
   }
-  return { user, loggedIn, signIn, signOut }
+
+  /** 이메일로 인증 코드를 보낸다. */
+  async function requestCode(email: string) {
+    const { error } = await getSupabase().auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, emailRedirectTo: `${location.origin}${import.meta.env.BASE_URL}` },
+    })
+    if (error) throw error
+  }
+  /** 받은 코드로 로그인한다. */
+  async function verifyCode(email: string, token: string) {
+    const { data, error } = await getSupabase().auth.verifyOtp({ email, token, type: 'email' })
+    if (error) throw error
+    apply(data.session)
+  }
+  async function signOut() {
+    try { await getSupabase().auth.signOut({ scope: 'local' }) } catch { /* 네트워크가 없어도 이 기기에서는 로그아웃 */ }
+    apply(null)
+  }
+
+  return { user, loggedIn, init, requestCode, verifyCode, signOut }
 })

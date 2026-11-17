@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { storage } from '../storage'
 import { streakDays } from '../lib/streak'
 import { todayKey } from '../lib/dates'
+import { useUiStore } from './ui'
 import type { ProgressRecord } from '../types'
 
 export const useProgressStore = defineStore('progress', () => {
@@ -22,7 +23,7 @@ export const useProgressStore = defineStore('progress', () => {
     const cur = records.value[id] ?? { videoId, dates: [], star: false, offset: 0 }
     const next: ProgressRecord = { ...cur, ...p, videoId }
     records.value = { ...records.value, [id]: next }
-    void storage.saveProgress(id, next)
+    storage.saveProgress(id, next).catch(() => useUiStore().say('저장하지 못했어요. 인터넷 연결을 확인해 주세요.'))
   }
 
   /** 오늘 완료를 켜거나 끈다(취소). 새로 완료했으면 true. */

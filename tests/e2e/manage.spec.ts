@@ -128,7 +128,7 @@ test('등록 전체 흐름: 붙여넣기 → 확인 → 저장 → 문장 화면
   await expect(page.getByText('복원한 문장').first()).toBeVisible()
   // 재생은 새 영상의 ID와 구간으로 간다
   await page.getByRole('button', { name: /원어민 .*부터 재생/ }).first().click()
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __yt: { calls: unknown[][] } }).__yt.calls.at(-1))).toEqual(['load', YT, 5, 11])
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __yt?: { calls: unknown[][] } }).__yt?.calls.at(-1))).toEqual(['load', YT, 5, 11])
   // 홈 목록과 새로고침
   await page.getByRole('tab', { name: '홈' }).click()
   await expect(page.getByRole('heading', { name: '공항 영어' })).toBeVisible()
@@ -283,37 +283,6 @@ test('공유 링크는 미리보기로만 보이고, 켜면 주소가 나오고 
   await page.getByTestId('link-switch').check()
   await expect(page.getByTestId('link')).toHaveValue(/#\/s\/[a-z0-9]{8}$/)
   await expect(page.getByRole('button', { name: /링크 복사/ })).toBeDisabled()
-  expect(await overflow(page)).toBeLessThanOrEqual(0)
-})
-
-test('계정: 구글/카카오 미리보기 로그인과 로그아웃', async ({ page }) => {
-  await page.getByTestId('go-account').click()
-  await expect(page.getByTestId('account-preview-note')).toContainText('미리보기')
-  await page.getByTestId('login-google').click()
-  await expect(page.getByTestId('who-name')).toHaveText('Google 사용자')
-  await page.reload()
-  await expect(page.getByTestId('who-name')).toHaveText('Google 사용자') // 새로고침 뒤에도 유지
-  await page.getByTestId('signout').click()
-  await expect(page.getByTestId('login-kakao')).toBeVisible()
-  await page.getByTestId('login-kakao').click()
-  await expect(page.getByTestId('who-name')).toHaveText('카카오 사용자')
-  await page.getByRole('button', { name: '뒤로' }).click()
-  await expect(page.getByTestId('go-account')).toContainText('카카오 사용자')
-})
-
-test('계정: 이메일 로그인 흐름과 형식 검사', async ({ page }) => {
-  await page.goto('/#/account')
-  const send = page.getByTestId('send-link')
-  await expect(send).toBeDisabled()
-  await page.getByTestId('email').fill('abc')
-  await expect(page.getByText('이메일 형식을 확인해 주세요.')).toBeVisible()
-  await expect(send).toBeDisabled()
-  await page.getByTestId('email').fill('yoon@example.com')
-  await expect(send).toBeEnabled()
-  await send.click()
-  await expect(page.getByTestId('link-sent')).toContainText('yoon@example.com')
-  await page.getByTestId('open-link').click()
-  await expect(page.getByTestId('who-name')).toHaveText('yoon')
   expect(await overflow(page)).toBeLessThanOrEqual(0)
 })
 
