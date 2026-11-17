@@ -35,10 +35,9 @@ async function addVideo(page: Page, title = '공항 영어') {
   await expect(page.getByText('Where is the boarding gate?').first()).toBeVisible()
 }
 
-test('로그인 전에는 서버로 데이터 요청을 보내지 않고, 구글·카카오는 준비 중으로 막혀 있다', async ({ page }) => {
+test('로그인 전에는 서버로 데이터 요청을 보내지 않는다', async ({ page }) => {
   await page.getByTestId('go-account').click()
-  await expect(page.getByTestId('login-google')).toBeDisabled()
-  await expect(page.getByTestId('login-kakao')).toBeDisabled()
+  await expect(page.getByTestId('login-google')).toBeEnabled()
   await home(page)
   await page.getByRole('button', { name: '문장 보기' }).click()
   await page.getByRole('button', { name: /완료/ }).first().click()
@@ -275,4 +274,42 @@ test('알 수 없는 주소나 이상한 해시는 홈으로 보낸다', async (
   await page.goto('about:blank') // 메일 링크는 새로 열리는 것과 같다
   await page.goto('/#access_token=abc&token_type=bearer')
   await expect(page.getByTestId('callback-error')).toContainText('처리하지 못했어요')
+})
+
+test('Google 로그인: 서비스 화면에 갔다가 돌아오면 로그인되고, 내 데이터는 계정에 저장된다', async ({ page }) => {
+  await page.goto('/#/account')
+  await page.getByTestId('login-google').click()
+  await expect(page.getByTestId('go-account')).toContainText('g@example.com') // 로그인 뒤 홈으로 돌아온다
+  await page.getByTestId('go-account').click()
+  await expect(page.getByTestId('who-name')).toHaveText('g@example.com')
+  await expect(page.getByText('Google 로그인')).toBeVisible()
+  expect(fake.oauthRequests[0]).toMatchObject({ provider: 'google' })
+  expect(fake.oauthRequests[0]!.redirectTo).toMatch(/^http:\/\/localhost:4173\/$/)
+  expect(page.url()).not.toContain('code=')
+  await home(page)
+  await expect(page.getByTestId('go-account')).toContainText('g@example.com')
+  await page.getByRole('button', { name: '목표 늘리기' }).click()
+  await expect.poll(() => fake.tables.settings![0]?.user_id).toBe('user-g')
+  await page.reload()
+  await expect(page.getByTestId('go-account')).toContainText('g@example.com') // 새로고침 뒤에도 로그인 유지
+})
+
+test('카카오 로그인: 이메일이 없으면 닉네임으로 표시하고 닉네임 권한만 요청한다', async ({ page }) => {
+  fake.oauthUser = { email: '', name: '카카오닉네임' }
+  await page.goto('/#/account')
+  await page.getByTestId('login-kakao').click()
+  await expect(page.getByTestId('go-account')).toContainText('카카오닉네임')
+  await page.getByTestId('go-account').click()
+  await expect(page.getByTestId('who-name')).toHaveText('카카오닉네임')
+  await expect(page.getByText('카카오 로그인')).toBeVisible()
+  expect(fake.oauthRequests[0]).toMatchObject({ provider: 'kakao', scopes: 'profile_nickname' })
+})
+
+test('로그인 화면에서 취소하고 돌아오면 안내가 나오고 로그인되지 않는다', async ({ page }) => {
+  fake.oauthResult = 'cancel'
+  await page.goto('/#/account')
+  await page.getByTestId('login-google').click()
+  await expect(page.getByTestId('callback-error')).toContainText('취소됐거나')
+  await expect(page.getByTestId('login-google')).toBeVisible()
+  expect(page.url()).not.toContain('error')
 })

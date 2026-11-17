@@ -15,6 +15,9 @@ export interface Fake {
   restCalls: { method: string; path: string; authed: boolean }[]
   failRest: boolean // true 면 REST 요청이 모두 500
   otpError: null | { status: number; code: string; msg: string }
+  oauthRequests: { provider: string | null; redirectTo: string | null; scopes: string | null }[]
+  oauthResult: 'ok' | 'cancel'
+  oauthUser: { email: string; name: string } | null
   nextUserId: string
 }
 
@@ -31,7 +34,7 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const json = (route: Route, status: number, body: unknown) => route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(body) })
 
 export async function installFakeSupabase(page: Page): Promise<Fake> {
-  const fake: Fake = { tables: { videos: [], progress: [], settings: [] }, otpRequests: [], verifyRequests: [], restCalls: [], failRest: false, otpError: null, nextUserId: 'user-1' }
+  const fake: Fake = { tables: { videos: [], progress: [], settings: [] }, otpRequests: [], verifyRequests: [], restCalls: [], failRest: false, otpError: null, oauthRequests: [], oauthResult: 'ok', oauthUser: { email: 'g@example.com', name: '홍길동' }, nextUserId: 'user-1' }
   const emailToId = new Map<string, string>()
 
   await page.route(`${HOST}/**`, async (route) => {
@@ -43,6 +46,14 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
     const body = req.postData() ? JSON.parse(req.postData()!) : null
 
     // ---- 로그인 ----
+    if (path === '/auth/v1/authorize') {
+      const to = url.searchParams.get('redirect_to') ?? 'http://localhost:4173/'
+      fake.oauthRequests.push({ provider: url.searchParams.get('provider'), redirectTo: to, scopes: url.searchParams.get('scopes') })
+      const back = new URL(to)
+      if (fake.oauthResult === 'cancel') { back.searchParams.set('error', 'access_denied'); back.searchParams.set('error_description', 'user cancelled') }
+      else back.searchParams.set('code', 'oauthcode')
+      return route.fulfill({ status: 302, headers: { ...CORS, location: back.toString() } })
+    }
     if (path === '/auth/v1/otp') {
       if (fake.otpError) return json(route, fake.otpError.status, { code: fake.otpError.code, msg: fake.otpError.msg, error_code: fake.otpError.code })
       fake.otpRequests.push(body.email)
@@ -55,6 +66,12 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
       return json(route, 200, sessionOf(emailToId.get(body.email)!, body.email))
     }
     if (path === '/auth/v1/token') {
+      if (url.searchParams.get('grant_type') === 'pkce' && fake.oauthUser && fake.oauthRequests.length) {
+        const s = sessionOf('user-g', fake.oauthUser.email)
+        s.user.app_metadata = { provider: fake.oauthRequests.at(-1)!.provider ?? 'google', providers: [fake.oauthRequests.at(-1)!.provider ?? 'google'] }
+        s.user.user_metadata = { name: fake.oauthUser.name }
+        return json(route, 200, s)
+      }
       const id = [...emailToId.values()][0] ?? fake.nextUserId
       const email = [...emailToId.keys()][0] ?? 'a@b.c'
       return json(route, 200, sessionOf(id, email))

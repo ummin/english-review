@@ -25,7 +25,8 @@ if (authCallbackError) {
 
 export function describeCallbackError(code: string | null): string {
   if (!code) return ''
-  if (code === 'otp_expired' || code === 'access_denied')
+  if (code === 'access_denied') return '로그인이 취소됐거나 완료되지 않았어요. 다시 시도해 주세요.'
+  if (code === 'otp_expired')
     return '로그인 링크가 이미 사용됐거나 시간이 지났어요. 메일 앱이 링크를 미리 열어 보면 이렇게 될 수 있어요. 아래에서 메일을 다시 받아서 바로 눌러 보세요.'
   return '로그인 링크를 처리하지 못했어요. 메일을 다시 받아 주세요.'
 }

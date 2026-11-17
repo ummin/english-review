@@ -52,3 +52,10 @@ npm run build        # 배포 파일(dist) 만들기
 - 이메일 로그인은 링크 대신 **인증 코드**를 입력하는 방식 (메일 앱이 다른 브라우저로 열어도 동작)
 - 키: `src/lib/supabase.ts` (공개용 publishable 키만. secret/service_role 키는 절대 넣지 않는다)
 - 테스트: `tests/e2e/fakeSupabase.ts` 가 실제 서버 대신 답하는 가짜 서버 (RLS 흉내 포함)
+
+## 6단계: Google·카카오 로그인
+
+- 코드: `auth.signInWith('google'|'kakao')` (Supabase OAuth, PKCE). 로그인 뒤 홈으로 돌아온다.
+- Supabase 대시보드 → Authentication → Providers 에서 Google/Kakao 를 켜고 Client ID/Secret 을 넣는다. (비밀 값은 대시보드에만 입력)
+- 각 서비스 콘솔에 등록할 Redirect URI: `https://blysqzzhuidlqpwjczzw.supabase.co/auth/v1/callback`
+- 카카오는 이메일 권한이 없어도 되도록 닉네임만 요청하고, Supabase 에서 "Allow users without an email" 을 켠다.

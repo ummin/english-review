@@ -13,6 +13,7 @@ const auth = useAuthStore()
 const library = useLibraryStore()
 const ui = useUiStore()
 
+const providerName = computed(() => ({ google: 'Google', kakao: '카카오', email: '이메일' }[auth.user?.provider ?? ''] ?? '이메일'))
 const email = ref('')
 const code = ref('')
 const stage = ref<'email' | 'code'>('email')
@@ -29,6 +30,19 @@ function startCooldown() {
   timer = setInterval(() => { cooldown.value = Math.max(0, cooldown.value - 1); if (!cooldown.value) clearInterval(timer) }, 1000)
 }
 onBeforeUnmount(() => clearInterval(timer))
+
+const socialError = ref('')
+async function social(p: 'google' | 'kakao') {
+  if (busy.value) return
+  busy.value = true
+  socialError.value = ''
+  try {
+    await auth.signInWith(p) // 성공하면 로그인 화면으로 이동한다
+  } catch (e) {
+    socialError.value = friendlyAuthError(e)
+    busy.value = false
+  }
+}
 
 async function sendCode() {
   if (!emailOk.value || busy.value || cooldown.value) return
@@ -98,7 +112,7 @@ async function moveLocal() {
     <div class="card">
       <div class="who">
         <span class="av"><Icon name="user" /></span>
-        <div><h3 data-testid="who-name">{{ auth.user.email }}</h3><small>공부 기록과 영상이 내 계정에 저장돼요</small></div>
+        <div><h3 data-testid="who-name">{{ auth.user.label }}</h3><small>{{ providerName }} 로그인 · 공부 기록과 영상이 내 계정에 저장돼요</small></div>
       </div>
       <button class="cbtn danger wide" data-testid="signout" @click="auth.signOut()">로그아웃</button>
     </div>
@@ -132,9 +146,10 @@ async function moveLocal() {
     </div>
     <div class="card sec">
       <h3>Google · 카카오로 로그인</h3>
-      <p>다음 단계에서 연결돼요.</p>
-      <button class="cbtn google wide" disabled data-testid="login-google">Google로 계속하기 (준비 중)</button>
-      <button class="cbtn kakao wide" disabled data-testid="login-kakao">카카오로 계속하기 (준비 중)</button>
+      <p>메일 없이 바로 로그인해요. 처음이면 자동으로 계정이 만들어져요.</p>
+      <button class="cbtn google wide" :disabled="busy" data-testid="login-google" @click="social('google')">Google로 계속하기</button>
+      <button class="cbtn kakao wide" :disabled="busy" data-testid="login-kakao" @click="social('kakao')">카카오로 계속하기</button>
+      <p v-if="socialError" class="field-msg bad" role="alert" data-testid="social-error">{{ socialError }}</p>
     </div>
   </template>
 </template>

@@ -7,7 +7,15 @@ import { setStorage } from '../storage'
 import { createSampleStorage } from '../storage/sample'
 import { createSupabaseStorage } from '../storage/supabase'
 
-export interface User { id: string; email: string }
+export interface User { id: string; email: string; label: string; provider: string }
+export type OAuthProvider = 'google' | 'kakao'
+
+function toUser(u: NonNullable<Session['user']>): User {
+  const meta = (u.user_metadata ?? {}) as Record<string, unknown>
+  const name = [meta.name, meta.full_name, meta.nickname, meta.preferred_username].find((v): v is string => typeof v === 'string' && !!v.trim())
+  const provider = (u.app_metadata?.provider as string | undefined) ?? 'email'
+  return { id: u.id, email: u.email ?? '', provider, label: u.email || name || (provider === 'kakao' ? '카카오 사용자' : '사용자') }
+}
 
 /** Supabase 오류를 사람이 읽을 말로 바꾼다. */
 export function friendlyAuthError(e: unknown): string {
@@ -15,6 +23,7 @@ export function friendlyAuthError(e: unknown): string {
   const code = (e as { code?: string; status?: number } | null)?.code ?? ''
   const status = (e as { status?: number } | null)?.status
   if (code === 'over_email_send_rate_limit' || status === 429 || /rate limit/i.test(m)) return '메일을 너무 자주 보냈어요. 잠시(몇 분) 뒤에 다시 시도해 주세요.'
+  if (/provider is not enabled|unsupported provider/i.test(m)) return '이 로그인 방식은 아직 켜져 있지 않아요.'
   if (/email address not authorized/i.test(m)) return '이 이메일로는 아직 코드를 보낼 수 없어요. 계정 주인 이메일로 시도해 주세요.'
   if (code === 'otp_expired' || /expired|invalid/i.test(m)) return '코드가 맞지 않거나 시간이 지났어요. 메일을 다시 받아 주세요.'
   if (/fetch|network|failed to/i.test(m)) return '인터넷 연결을 확인하고 다시 시도해 주세요.'
@@ -33,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
     const u = session?.user
     if (u) {
       setStorage(createSupabaseStorage(getSupabase(), u.id))
-      if (user.value?.id !== u.id) user.value = { id: u.id, email: u.email ?? '' }
+      if (user.value?.id !== u.id) user.value = toUser(u)
     } else {
       setStorage(createSampleStorage())
       user.value = null
@@ -72,10 +81,22 @@ export const useAuthStore = defineStore('auth', () => {
     if (error) throw error
     apply(data.session)
   }
+  /** Google·카카오 로그인. 해당 서비스의 로그인 화면으로 이동했다가 이 앱으로 돌아온다. */
+  async function signInWith(provider: OAuthProvider) {
+    const { error } = await getSupabase().auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${location.origin}${import.meta.env.BASE_URL}`,
+        ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
+        ...(provider === 'kakao' ? { scopes: 'profile_nickname' } : {}),
+      },
+    })
+    if (error) throw error
+  }
   async function signOut() {
     try { await getSupabase().auth.signOut({ scope: 'local' }) } catch { /* 네트워크가 없어도 이 기기에서는 로그아웃 */ }
     apply(null)
   }
 
-  return { user, callbackError, loggedIn, init, requestCode, verifyCode, signOut }
+  return { user, callbackError, loggedIn, init, requestCode, verifyCode, signInWith, signOut }
 })

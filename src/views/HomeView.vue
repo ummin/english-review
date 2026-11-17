@@ -102,6 +102,6 @@ function openVideo(id: string) {
   <h2 class="h">내 정보</h2>
   <button class="card who" style="text-align:left;flex-direction:row;cursor:pointer" data-testid="go-account" @click="router.push('/account')">
     <span class="av"><Icon name="user" /></span>
-    <span><b>{{ auth.user ? auth.user.email : '로그인' }}</b><br /><small>{{ auth.user ? '내 계정 보기' : '로그인하면 어디서든 이어서 공부해요' }}</small></span>
+    <span><b>{{ auth.user ? auth.user.label : '로그인' }}</b><br /><small>{{ auth.user ? '내 계정 보기' : '로그인하면 어디서든 이어서 공부해요' }}</small></span>
   </button>
 </template>
