@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Icon from '../components/Icon.vue'
 import { useLibraryStore } from '../stores/library'
 import { useProgressStore } from '../stores/progress'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
+import { useUiStore } from '../stores/ui'
 import { addDays, dateKey, longDate, todayKey, WEEKDAYS } from '../lib/dates'
 
 const router = useRouter()
@@ -13,6 +14,7 @@ const library = useLibraryStore()
 const progress = useProgressStore()
 const settings = useSettingsStore()
 const auth = useAuthStore()
+const ui = useUiStore()
 
 const C = 226.2
 const pct = computed(() => Math.min(1, progress.todayCount / settings.dailyGoal))
@@ -41,6 +43,25 @@ const videos = computed(() =>
 function openVideo(id: string) {
   library.select(id)
   router.push('/sent')
+}
+
+// 홈에서 바로 영상 삭제 (편집 화면의 삭제와 같은 동작). 공부 기록의 날짜는 남아 연속일은 유지된다.
+const delId = ref<string | null>(null)
+const delError = ref('')
+const deleting = ref(false)
+async function removeVideo(id: string) {
+  if (deleting.value) return
+  deleting.value = true
+  delError.value = ''
+  try {
+    await library.removeVideo(id)
+    delId.value = null
+    ui.say('영상을 삭제했어요.')
+  } catch {
+    delError.value = '삭제하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -95,6 +116,15 @@ function openVideo(id: string) {
         <button class="cbtn orange sm" @click="openVideo(x.v.id)">문장 보기</button>
         <button v-if="!library.isSample(x.v.id)" class="icon s" :aria-label="`${x.v.title} 편집`" @click="router.push(`/video/${x.v.id}`)"><Icon name="edit" /></button>
         <button class="icon s" :aria-label="`${x.v.title} 공유`" @click="router.push(`/share/${x.v.id}`)"><Icon name="share" /></button>
+        <button v-if="!library.isSample(x.v.id)" class="icon s" :aria-label="`${x.v.title} 삭제`" data-testid="video-del" @click="delId = x.v.id; delError = ''"><Icon name="trash" /></button>
+      </div>
+      <div v-if="delId === x.v.id" class="notice" role="alertdialog" :aria-label="`${x.v.title} 삭제 확인`" data-testid="video-del-box">
+        <p>‘{{ x.v.title }}’을(를) 삭제할까요? 카드와 공유 링크가 지워지고 되돌릴 수 없어요.</p>
+        <p v-if="delError" class="field-msg bad" role="alert" data-testid="video-del-error">{{ delError }}</p>
+        <div class="btnrow">
+          <button class="cbtn white sm" :disabled="deleting" data-testid="video-del-cancel" @click="delId = null">취소</button>
+          <button class="cbtn danger sm" :disabled="deleting" data-testid="video-del-yes" @click="removeVideo(x.v.id)">{{ deleting ? '삭제하는 중…' : '삭제' }}</button>
+        </div>
       </div>
     </div>
   </div>

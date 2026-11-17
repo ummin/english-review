@@ -43,6 +43,8 @@ test('▶를 누르면 앱 안 플레이어가 열리고 그 구간만 재생한
   await expect(page.getByRole('region', { name: '재생 플레이어' })).toBeVisible()
   await expect(page.getByTestId('player-now')).toHaveText('원어민0:10–0:16')
   expect(await calls(page)).toContainEqual(['load', 'aqz-KE-bpKQ', 10, 16])
+  // 유튜브 앱으로 이 구간을 열 수 있다 (프리미엄 계정은 앱에서 광고 없이 재생)
+  await expect(page.getByTestId('open-yt')).toHaveAttribute('href', 'https://youtu.be/aqz-KE-bpKQ?t=10')
   // 새 탭이나 유튜브 앱으로 나가지 않는다
   expect(page.url()).toContain('localhost')
 })

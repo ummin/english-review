@@ -26,6 +26,7 @@ onBeforeUnmount(() => player.unregisterHost(mount.value))
       <button class="chip" :aria-pressed="player.loop" @click="player.toggleLoop()">반복</button>
       <button class="chip" :aria-pressed="player.rate === 0.75" @click="player.setRate(player.rate === 0.75 ? 1 : 0.75)">0.75배</button>
       <button class="chip" aria-label="구간 다시 재생" @click="player.replay()"><Icon name="redo" />다시</button>
+      <a v-if="player.ytLink" class="chip" :href="player.ytLink" target="_blank" rel="noopener" aria-label="유튜브 앱에서 이 구간 열기" data-testid="open-yt">유튜브로 열기</a>
       <button class="icon s" aria-label="플레이어 닫기" @click="player.close()"><Icon name="close" /></button>
     </div>
     <p v-if="player.status === 'needtap'" class="player-hint" role="status">소리가 안 나면 영상의 ▶ 버튼을 한 번 눌러 주세요.</p>

@@ -247,3 +247,28 @@ test('계정 삭제 뒤 같은 계정으로 다시 로그인하면 비어 있는
   await tab(page, '홈')
   await expect(page.getByRole('heading', { name: '공항 영어' })).toHaveCount(0)
 })
+
+test('홈에서 영상 삭제: 확인 뒤 지워지고, 공유 링크도 닫히며, 실패하면 그대로다', async ({ page }) => {
+  const code = await aShares(page)
+  await tab(page, '홈')
+  await expect(page.getByRole('button', { name: '샘플 영상 삭제' })).toHaveCount(0) // 샘플은 지울 수 없다
+  await page.getByRole('button', { name: '공항 영어 삭제' }).click()
+  await expect(page.getByTestId('video-del-box')).toContainText('공항 영어')
+  await page.getByTestId('video-del-cancel').click()
+  await expect(page.getByTestId('video-del-box')).toHaveCount(0)
+  expect(fake.tables.videos).toHaveLength(1)
+  await page.getByRole('button', { name: '공항 영어 삭제' }).click()
+  fake.failRest = true
+  await page.getByTestId('video-del-yes').click()
+  await expect(page.getByTestId('video-del-error')).toBeVisible()
+  expect(fake.tables.videos).toHaveLength(1)
+  fake.failRest = false
+  await page.getByTestId('video-del-yes').click()
+  await expect(page.getByRole('heading', { name: '공항 영어' })).toHaveCount(0)
+  expect(fake.tables.videos).toHaveLength(0)
+  await signOut(page)
+  await page.goto('about:blank')
+  await page.goto('/#/s/' + code)
+  await login(page, 'b@example.com')
+  await expect(page.getByTestId('shared-none')).toBeVisible()
+})
