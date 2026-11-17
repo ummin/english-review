@@ -20,7 +20,7 @@ const ui = useUiStore()
 const progress = useProgressStore()
 const settings = useSettingsStore()
 
-const providerName = computed(() => ({ google: 'Google', kakao: '카카오', email: '이메일' }[auth.user?.provider ?? ''] ?? '이메일'))
+const providerName = computed(() => ({ google: 'Google', kakao: '카카오' }[auth.user?.provider ?? ''] ?? 'Google'))
 
 // 로그인 전에 이 기기에 만든 영상을 계정으로 옮기기 (이 기기 저장을 쓰던 경우에만 나온다)
 const localVideos = ref<number | null>(null)
@@ -96,6 +96,25 @@ async function onRestore(e: Event) {
     restoring.value = false
   }
 }
+
+// 계정 삭제: 되돌릴 수 없으므로 '삭제'를 직접 입력해야 버튼이 켜진다.
+const delOpen = ref(false)
+const delText = ref('')
+const deleting = ref(false)
+const delError = ref('')
+async function deleteAccount() {
+  if (delText.value.trim() !== '삭제' || deleting.value) return
+  deleting.value = true
+  delError.value = ''
+  try {
+    await auth.deleteAccount() // 성공하면 로그아웃되어 로그인 화면으로 돌아간다
+    ui.say('계정과 모든 데이터를 삭제했어요.')
+  } catch {
+    delError.value = '삭제하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -123,6 +142,22 @@ async function onRestore(e: Event) {
       <button class="cbtn blue wide" data-testid="backup-save" @click="saveBackup"><Icon name="download" />백업 파일 저장</button>
       <label class="cbtn white wide" style="cursor:pointer;margin-top:8px" :aria-disabled="restoring">{{ restoring ? '불러오는 중…' : '백업 파일 불러오기' }}<input type="file" accept=".json,application/json" class="sr-only" aria-label="백업 파일 선택" data-testid="backup-file" :disabled="restoring" @change="onRestore" /></label>
       <p v-if="restoreMsg" class="field-msg bad" role="alert" data-testid="restore-error">{{ restoreMsg }}</p>
+    </div>
+    <div class="card sec" data-testid="delete-account">
+      <h3>계정 삭제</h3>
+      <template v-if="!delOpen">
+        <p>계정과 내 영상, 카드, 공부 기록, 공유 링크가 모두 지워져요. 지운 데이터는 되돌릴 수 없어요.</p>
+        <button class="cbtn danger wide" data-testid="delete-open" @click="delOpen = true"><Icon name="trash" />계정 삭제</button>
+      </template>
+      <template v-else>
+        <p class="notice" role="alert">되돌릴 수 없어요. 먼저 위의 <b>백업 파일 저장</b>으로 내 데이터를 보관해 두세요.</p>
+        <label class="f">확인을 위해 <b>삭제</b> 라고 입력해 주세요<input v-model="delText" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" data-testid="delete-confirm" /></label>
+        <p v-if="delError" class="field-msg bad" role="alert" data-testid="delete-error">{{ delError }}</p>
+        <div class="btnrow">
+          <button class="cbtn white" :disabled="deleting" data-testid="delete-cancel" @click="delOpen = false; delText = ''; delError = ''">취소</button>
+          <button class="cbtn danger" :disabled="delText.trim() !== '삭제' || deleting" data-testid="delete-yes" @click="deleteAccount">{{ deleting ? '삭제하는 중…' : '계정 영구 삭제' }}</button>
+        </div>
+      </template>
     </div>
   </template>
   <LoginCard v-else />

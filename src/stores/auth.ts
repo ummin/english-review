@@ -21,12 +21,9 @@ function toUser(u: NonNullable<Session['user']>): User {
 /** Supabase 오류를 사람이 읽을 말로 바꾼다. */
 export function friendlyAuthError(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e ?? '')
-  const code = (e as { code?: string; status?: number } | null)?.code ?? ''
   const status = (e as { status?: number } | null)?.status
-  if (code === 'over_email_send_rate_limit' || status === 429 || /rate limit/i.test(m)) return '메일을 너무 자주 보냈어요. 잠시(몇 분) 뒤에 다시 시도해 주세요.'
+  if (status === 429 || /rate limit/i.test(m)) return '요청이 너무 잦아요. 잠시 뒤에 다시 시도해 주세요.'
   if (/provider is not enabled|unsupported provider/i.test(m)) return '이 로그인 방식은 아직 켜져 있지 않아요.'
-  if (/email address not authorized/i.test(m)) return '이 이메일로는 아직 코드를 보낼 수 없어요. 계정 주인 이메일로 시도해 주세요.'
-  if (code === 'otp_expired' || /expired|invalid/i.test(m)) return '코드가 맞지 않거나 시간이 지났어요. 메일을 다시 받아 주세요.'
   if (/fetch|network|failed to/i.test(m)) return '인터넷 연결을 확인하고 다시 시도해 주세요.'
   return '문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.'
 }
@@ -68,20 +65,6 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  /** 이메일로 인증 코드를 보낸다. */
-  async function requestCode(email: string) {
-    const { error } = await getSupabase().auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: `${location.origin}${import.meta.env.BASE_URL}` },
-    })
-    if (error) throw error
-  }
-  /** 받은 코드로 로그인한다. */
-  async function verifyCode(email: string, token: string) {
-    const { data, error } = await getSupabase().auth.verifyOtp({ email, token, type: 'email' })
-    if (error) throw error
-    apply(data.session)
-  }
   /** Google·카카오 로그인. 해당 서비스의 로그인 화면으로 이동했다가 이 앱으로 돌아온다. */
   async function signInWith(provider: OAuthProvider) {
     rememberReturn()
@@ -100,5 +83,16 @@ export const useAuthStore = defineStore('auth', () => {
     apply(null)
   }
 
-  return { user, callbackError, loggedIn, init, requestCode, verifyCode, signInWith, signOut }
+  /**
+   * 계정과 그 안의 모든 데이터(영상·기록·설정·공유 링크)를 지운다.
+   * 서버의 delete_my_account() 는 로그인한 본인 계정만 지운다.
+   */
+  async function deleteAccount() {
+    const { error } = await getSupabase().rpc('delete_my_account')
+    if (error) throw error
+    try { localStorage.removeItem('er-ui:video') } catch { /* 무시 */ }
+    await signOut()
+  }
+
+  return { user, callbackError, loggedIn, init, signInWith, signOut, deleteAccount }
 })

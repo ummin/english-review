@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { GOOD_CODE, installFakeSupabase, type Fake } from './fakeSupabase'
+import { installFakeSupabase, loginGoogle, type Fake } from './fakeSupabase'
 
 /** 배포본과 같은 빌드: 로그인하지 않으면 앱이 아예 보이지 않아야 한다. */
 const errors: string[] = []
@@ -19,8 +19,14 @@ test('로그인하지 않으면 로그인 화면만 보이고 앱 화면·탭·�
   await expect(gate(page)).toBeVisible()
   await expect(page.getByText('로그인이 필요해요')).toBeVisible()
   await expect(page.getByTestId('login-google')).toBeEnabled()
-  await expect(page.getByTestId('login-kakao')).toBeEnabled()
-  await expect(page.getByTestId('email')).toBeVisible()
+  await expect(page.getByTestId('login-kakao')).toHaveCount(0) // 로그인은 Google 하나로 통일
+  await expect(page.getByTestId('email')).toHaveCount(0)
+  await expect(page.getByTestId('send-code')).toHaveCount(0)
+  // 로그인 전에도 앱 소개와 약관 링크가 보인다 (Google 앱 게시 심사 요건)
+  await expect(page.getByText('유튜브 영어회화 영상에서 뽑은 표현')).toBeVisible()
+  await expect(page.getByRole('link', { name: '개인정보처리방침' })).toHaveAttribute('href', /privacy\.html$/)
+  await expect(page.getByRole('link', { name: '이용약관' })).toHaveAttribute('href', /terms\.html$/)
+  await expect(page.getByTestId('login-google')).toBeVisible()
   expect(await appVisible(page)).toBe(0) // 하단 탭이 없다
   await expect(page.getByTestId('streak')).toHaveCount(0)
   await expect(page.getByText('샘플 · 여행 영어 기본 표현')).toHaveCount(0)
@@ -62,14 +68,16 @@ test('Google로 로그인하면 앱이 열리고, 새로고침해도 유지된�
   await expect(gate(page)).toHaveCount(0)
 })
 
-test('이메일 코드로 로그인해도 앱이 열린다', async ({ page }) => {
-  await page.goto('/')
-  await page.getByTestId('email').fill('yoon@example.com')
-  await page.getByTestId('send-code').click()
-  await page.getByTestId('code').fill(GOOD_CODE)
-  await page.getByTestId('verify').click()
-  await expect(page.getByTestId('streak')).toBeVisible()
-  await expect(page.getByTestId('go-account')).toContainText('yoon@example.com')
+test('개인정보처리방침과 이용약관 페이지는 로그인 없이 열리고 문의 메일이 있다', async ({ page }) => {
+  for (const f of ['privacy', 'terms']) {
+    await page.goto(`/${f}.html`)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'yhoo13579@gmail.com' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+  }
+  await page.goto('/privacy.html')
+  await expect(page.getByText('계정 삭제')).toBeVisible()
+  expect(fake.restCalls).toEqual([])
 })
 
 test('로그인 뒤에 만든 데이터는 계정에 저장되고, 로그아웃하면 다시 로그인 화면이 된다', async ({ page }) => {
@@ -101,11 +109,7 @@ test('로그인 뒤에 만든 데이터는 계정에 저장되고, 로그아웃�
 
 test('다른 사람으로 로그인하면 이전 사람의 영상이 보이지 않는다', async ({ page }) => {
   await page.goto('/')
-  await page.getByTestId('email').fill('a@example.com')
-  await page.getByTestId('send-code').click()
-  await page.getByTestId('code').fill(GOOD_CODE)
-  await page.getByTestId('verify').click()
-  await expect(page.getByTestId('streak')).toBeVisible()
+  await loginGoogle(page, fake, 'a@example.com')
   await page.getByTestId('add-video').click()
   await page.getByTestId('title').fill('A의 영상')
   await page.getByTestId('yt').fill('dQw4w9WgXcQ')
@@ -116,10 +120,7 @@ test('다른 사람으로 로그인하면 이전 사람의 영상이 보이지 �
   await page.getByRole('tab', { name: '홈' }).click()
   await page.getByTestId('go-account').click()
   await page.getByTestId('signout').click()
-  await page.getByTestId('email').fill('b@example.com')
-  await page.getByTestId('send-code').click()
-  await page.getByTestId('code').fill(GOOD_CODE)
-  await page.getByTestId('verify').click()
+  await loginGoogle(page, fake, 'b@example.com')
   await page.getByRole('tab', { name: '홈' }).click()
   await expect(page.getByTestId('streak')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'A의 영상' })).toHaveCount(0)

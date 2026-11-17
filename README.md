@@ -69,3 +69,9 @@ npm run build        # 배포 파일(dist) 만들기
 - **구글 로그인 후에도** 공유 링크 주소가 유지됩니다(`lib/returnTo.ts`).
 - **백업/복원**: 내 계정 화면에서 영상·기록·목표를 JSON 하나로 저장/불러오기(같은 영상은 덮어쓰고 공부한 날짜는 합침). 계정 정보는 들어 있지 않습니다.
 - 테스트: `tests/e2e/share.spec.ts`(gate 빌드), `tests/unit/backup.test.ts`.
+
+## 9단계: Google 로그인 통일 · 계정 삭제 · 약관
+- **로그인은 Google 하나**: 이메일 코드 로그인은 제거했고 카카오 버튼은 숨겼습니다(코드는 `auth.signInWith('kakao')`에 남아 있어 나중에 켜면 됩니다).
+- **계정 삭제**: 내 계정 → 계정 삭제(“삭제” 입력 필요). DB 함수 `delete_my_account()`가 본인 `auth.users` 행만 지우고 영상·기록·설정·공유 링크는 cascade 로 함께 삭제됩니다. 먼저 `supabase/schema.sql` 맨 아래 "9단계" 블록을 SQL Editor에서 실행하세요.
+- **공개 페이지**: `public/privacy.html`, `public/terms.html`(로그인 없이 열림, Google 앱 게시 요건). 로그인 화면에 앱 소개와 두 링크가 있습니다. 문의 메일: yhoo13579@gmail.com
+- **Google 앱 게시 입력값**: 앱 이름 `영어회화 복습장`, 홈페이지 `https://ummin.github.io/english-review/`, 개인정보처리방침 `…/privacy.html`, 약관 `…/terms.html`, 승인된 도메인 `ummin.github.io`, 로고는 비움(브랜드 인증 회피).

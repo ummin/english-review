@@ -243,3 +243,5 @@ details.more>summary{cursor:pointer;font-weight:900;color:var(--blue);min-height
 /* 띄어쓰기 없는 아주 긴 글자도 카드 안에서 줄바꿈되게 한다 */
 .note-t,.ctx,.dcard .t,.rcard .q,.rcard .en{overflow-wrap:anywhere}
 .ed-sub .tag{align-self:flex-start}
+.legal{font-size:13px;color:var(--muted);margin:10px 0 0}
+.legal a{color:inherit;text-decoration:underline}

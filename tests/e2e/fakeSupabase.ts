@@ -5,17 +5,14 @@ import type { Page, Route } from '@playwright/test'
  * 실제 DB의 RLS처럼 "토큰의 사용자 행만" 보이게 흉내 낸다.
  */
 export const HOST = 'https://blysqzzhuidlqpwjczzw.supabase.co'
-export const GOOD_CODE = '123456'
 
 type Row = Record<string, unknown>
 export interface Fake {
   tables: Record<string, Row[]>
-  otpRequests: string[]
-  verifyRequests: { email: string; token: string }[]
   restCalls: { method: string; path: string; authed: boolean }[]
   rpcCalls: string[]
+  deleted: string[]
   failRest: boolean // true 면 REST 요청이 모두 500
-  otpError: null | { status: number; code: string; msg: string }
   oauthRequests: { provider: string | null; redirectTo: string | null; scopes: string | null }[]
   oauthResult: 'ok' | 'cancel'
   oauthUser: { email: string; name: string } | null
@@ -35,8 +32,9 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const json = (route: Route, status: number, body: unknown) => route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(body) })
 
 export async function installFakeSupabase(page: Page): Promise<Fake> {
-  const fake: Fake = { tables: { videos: [], progress: [], settings: [] }, otpRequests: [], verifyRequests: [], restCalls: [], rpcCalls: [], failRest: false, otpError: null, oauthRequests: [], oauthResult: 'ok', oauthUser: { email: 'g@example.com', name: '홍길동' }, nextUserId: 'user-1' }
+  const fake: Fake = { tables: { videos: [], progress: [], settings: [] }, restCalls: [], rpcCalls: [], deleted: [], failRest: false, oauthRequests: [], oauthResult: 'ok', oauthUser: { email: 'g@example.com', name: '홍길동' }, nextUserId: 'user-1' }
   const emailToId = new Map<string, string>()
+  let seq = 0
 
   await page.route(`${HOST}/**`, async (route) => {
     const req = route.request()
@@ -55,27 +53,24 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
       else back.searchParams.set('code', 'oauthcode')
       return route.fulfill({ status: 302, headers: { ...CORS, location: back.toString() } })
     }
-    if (path === '/auth/v1/otp') {
-      if (fake.otpError) return json(route, fake.otpError.status, { code: fake.otpError.code, msg: fake.otpError.msg, error_code: fake.otpError.code })
-      fake.otpRequests.push(body.email)
-      return json(route, 200, {})
-    }
-    if (path === '/auth/v1/verify') {
-      fake.verifyRequests.push({ email: body.email, token: body.token })
-      if (body.token !== GOOD_CODE) return json(route, 403, { code: 'otp_expired', error_code: 'otp_expired', msg: 'Token has expired or is invalid' })
-      if (!emailToId.has(body.email)) emailToId.set(body.email, emailToId.size ? `user-${emailToId.size + 1}` : fake.nextUserId)
-      return json(route, 200, sessionOf(emailToId.get(body.email)!, body.email))
-    }
     if (path === '/auth/v1/token') {
+      const idFor = (email: string) => {
+        if (!emailToId.has(email)) emailToId.set(email, seq++ ? `user-${seq}` : fake.nextUserId)
+        return emailToId.get(email)!
+      }
       if (url.searchParams.get('grant_type') === 'pkce' && fake.oauthUser && fake.oauthRequests.length) {
-        const s = sessionOf('user-g', fake.oauthUser.email)
-        s.user.app_metadata = { provider: fake.oauthRequests.at(-1)!.provider ?? 'google', providers: [fake.oauthRequests.at(-1)!.provider ?? 'google'] }
+        const prov = fake.oauthRequests.at(-1)!.provider ?? 'google'
+        const s = sessionOf(idFor(fake.oauthUser.email), fake.oauthUser.email)
+        s.user.app_metadata = { provider: prov, providers: [prov] }
         s.user.user_metadata = { name: fake.oauthUser.name }
         return json(route, 200, s)
       }
-      const id = [...emailToId.values()][0] ?? fake.nextUserId
-      const email = [...emailToId.keys()][0] ?? 'a@b.c'
-      return json(route, 200, sessionOf(id, email))
+      // 새로고침 토큰으로 같은 사람의 세션을 다시 준다
+      const rid = String(body?.refresh_token ?? '').replace(/^refresh-/, '')
+      const email = [...emailToId.entries()].find(([, id]) => id === rid)?.[0] ?? [...emailToId.keys()][0] ?? 'a@b.c'
+      const s = sessionOf(idFor(email), email)
+      s.user.app_metadata = { provider: 'google', providers: ['google'] }
+      return json(route, 200, s)
     }
     if (path === '/auth/v1/logout') return route.fulfill({ status: 204, headers: CORS })
     if (path === '/auth/v1/user') return json(route, 200, userOf('user-1', 'a@b.c'))
@@ -87,6 +82,15 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
       fake.rpcCalls.push(body.code)
       const hit = fake.tables.videos!.find((r) => r.share_id && r.share_id === body.code)
       return json(route, 200, hit ? [{ title: hit.title, youtube_id: hit.youtube_id, cards: hit.cards }] : [])
+    }
+    if (path === '/rest/v1/rpc/delete_my_account') {
+      const who = subOf(req.headers()['authorization'])
+      if (!who) return json(route, 401, { code: '42501', message: 'permission denied for function delete_my_account' })
+      if (fake.failRest) return json(route, 500, { message: 'server down' })
+      fake.deleted.push(who)
+      for (const t of Object.keys(fake.tables)) fake.tables[t] = fake.tables[t]!.filter((r) => r.user_id !== who)
+      for (const [k, v] of emailToId) if (v === who) emailToId.delete(k)
+      return route.fulfill({ status: 204, headers: CORS })
     }
     const m = path.match(/^\/rest\/v1\/(videos|progress|settings)$/)
     if (!m) return json(route, 404, { message: 'not found: ' + path })
@@ -131,4 +135,12 @@ export async function installFakeSupabase(page: Page): Promise<Fake> {
     return json(route, 405, { message: 'method not allowed' })
   })
   return fake
+}
+
+/** 로그인 화면에서 Google 로 로그인한다. (가짜 Google 이 돌려보내면 앱이 열린다) */
+export async function loginGoogle(page: Page, fake: Fake, email = 'a@example.com') {
+  fake.oauthResult = 'ok'
+  fake.oauthUser = { email, name: email.split('@')[0]! }
+  await page.getByTestId('login-google').click()
+  await page.getByRole('tablist').waitFor()
 }

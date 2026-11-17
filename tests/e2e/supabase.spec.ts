@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { GOOD_CODE, installFakeSupabase, type Fake } from './fakeSupabase'
+import { installFakeSupabase, loginGoogle, type Fake } from './fakeSupabase'
 import { todayKey } from '../../src/lib/dates'
 
 const errors: string[] = []
@@ -16,10 +16,8 @@ test.afterEach(() => expect(errors).toEqual([]))
 const EMAIL = 'yoon@example.com'
 async function login(page: Page, email = EMAIL) {
   await page.goto('/#/account')
-  await page.getByTestId('email').fill(email)
-  await page.getByTestId('send-code').click()
-  await page.getByTestId('code').fill(GOOD_CODE)
-  await page.getByTestId('verify').click()
+  await loginGoogle(page, fake, email) // Google 에 다녀오면 홈으로 돌아온다
+  await page.getByTestId('go-account').click()
   await expect(page.getByTestId('who-name')).toHaveText(email)
 }
 const home = (page: Page) => page.getByRole('tab', { name: '홈' }).click()
@@ -42,43 +40,6 @@ test('로그인 전에는 서버로 데이터 요청을 보내지 않는다', as
   await page.getByRole('button', { name: '문장 보기' }).click()
   await page.getByRole('button', { name: /완료/ }).first().click()
   expect(fake.restCalls).toEqual([])
-})
-
-test('이메일 코드 로그인: 형식 검사 → 코드 전송 → 틀린 코드 → 맞는 코드', async ({ page }) => {
-  await page.getByTestId('go-account').click()
-  const send = page.getByTestId('send-code')
-  await expect(send).toBeDisabled()
-  await page.getByTestId('email').fill('abc')
-  await expect(page.getByText('이메일 형식을 확인해 주세요.')).toBeVisible()
-  await page.getByTestId('email').fill(EMAIL)
-  await send.click()
-  await expect(page.getByTestId('code-sent')).toContainText(EMAIL)
-  expect(fake.otpRequests).toEqual([EMAIL])
-  await expect(page.getByTestId('resend')).toBeDisabled() // 연속 전송 방지
-  const verify = page.getByTestId('verify')
-  await expect(verify).toBeDisabled()
-  await page.getByTestId('code').fill('12ab')
-  await expect(verify).toBeDisabled() // 숫자 6자리 이상만
-  await page.getByTestId('code').fill('999999')
-  await verify.click()
-  await expect(page.getByTestId('auth-error')).toContainText('코드가 맞지 않거나')
-  await expect(page.getByTestId('who-name')).toHaveCount(0)
-  await page.getByTestId('code').fill(GOOD_CODE)
-  await verify.click()
-  await expect(page.getByTestId('who-name')).toHaveText(EMAIL)
-  expect(fake.verifyRequests.map((v) => v.token)).toEqual(['999999', GOOD_CODE])
-})
-
-test('메일을 너무 자주 보냈을 때와 허용되지 않은 이메일일 때 알기 쉬운 안내가 나온다', async ({ page }) => {
-  await page.getByTestId('go-account').click()
-  await page.getByTestId('email').fill(EMAIL)
-  fake.otpError = { status: 429, code: 'over_email_send_rate_limit', msg: 'email rate limit exceeded' }
-  await page.getByTestId('send-code').click()
-  await expect(page.getByTestId('auth-error')).toContainText('너무 자주')
-  fake.otpError = { status: 400, code: 'validation_failed', msg: 'Email address not authorized' }
-  await page.getByTestId('send-code').click()
-  await expect(page.getByTestId('auth-error')).toContainText('이 이메일로는 아직')
-  await expect(page.getByTestId('code-sent')).toHaveCount(0)
 })
 
 test('로그인하면 내 계정 데이터로 바뀐다(가짜 시드 기록 없음), 새로고침해도 로그인이 유지된다', async ({ page }) => {
@@ -164,7 +125,7 @@ test('사람마다 자기 데이터만 보인다(계정 분리)', async ({ page 
 test('로그아웃하면 이 기기 저장소로 돌아가고 서버 요청이 멈춘다', async ({ page }) => {
   await login(page)
   await page.getByTestId('signout').click()
-  await expect(page.getByTestId('email')).toBeVisible()
+  await expect(page.getByTestId('login-google')).toBeVisible()
   await home(page)
   await expect(page.getByTestId('streak')).toHaveText('2')
   const n = fake.restCalls.length
@@ -229,11 +190,11 @@ test('저장이 실패하면 알려 주고, 영상은 목록에 잘못 남지 �
 
 test('로그인 화면이 가로로 넘치지 않는다', async ({ page }) => {
   await page.goto('/#/account')
-  await page.getByTestId('email').fill('아주아주아주긴이메일아주아주아주긴이메일@example-domain-that-is-very-long.com')
+  await expect(page.getByTestId('login-google')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 })
 
-test('메일 링크(?code=)로 돌아오면 로그인되고 주소가 깨끗해진다', async ({ page }) => {
+test('로그인 코드(?code=)를 들고 돌아오면 로그인되고 주소가 깨끗해진다', async ({ page }) => {
   // 로그인 메일을 요청했던 브라우저라면 이 값이 이미 저장돼 있다(PKCE)
   await page.addInitScript(() => localStorage.setItem('er-auth-code-verifier', JSON.stringify('v'.repeat(60))))
   await page.goto('/?code=fakecode123')
@@ -242,7 +203,7 @@ test('메일 링크(?code=)로 돌아오면 로그인되고 주소가 깨끗해�
   expect(page.url()).not.toContain('code=')
 })
 
-test('다른 브라우저에서 링크를 열어 확인 값이 없으면 로그인되지 않지만 앱은 멀쩡하다', async ({ page }) => {
+test('이 브라우저에 확인 값이 없는 ?code= 주소면 로그인되지 않지만 앱은 멀쩡하다', async ({ page }) => {
   await page.goto('/?code=fakecode123')
   await expect(page.getByTestId('go-account')).toContainText('로그인')
   await expect(page.getByTestId('streak')).toBeVisible()
@@ -255,7 +216,7 @@ test('만료된 로그인 링크로 돌아오면 이유를 알려 주고 빈 화
   await expect(page.getByTestId('callback-error')).toContainText('otp_expired')
   expect(page.url()).toContain('#/account')
   expect(page.url()).not.toContain('error')
-  await expect(page.getByTestId('email')).toBeVisible() // 바로 메일을 다시 받을 수 있다
+  await expect(page.getByTestId('login-google')).toBeVisible() // 바로 다시 로그인할 수 있다
   await page.getByRole('tab', { name: '홈' }).click()
   await expect(page.getByTestId('streak')).toBeVisible()
 })
@@ -289,20 +250,9 @@ test('Google 로그인: 서비스 화면에 갔다가 돌아오면 로그인되�
   await home(page)
   await expect(page.getByTestId('go-account')).toContainText('g@example.com')
   await page.getByRole('button', { name: '목표 늘리기' }).click()
-  await expect.poll(() => fake.tables.settings![0]?.user_id).toBe('user-g')
+  await expect.poll(() => fake.tables.settings![0]?.user_id).toBe('user-1')
   await page.reload()
   await expect(page.getByTestId('go-account')).toContainText('g@example.com') // 새로고침 뒤에도 로그인 유지
-})
-
-test('카카오 로그인: 이메일이 없으면 닉네임으로 표시하고 닉네임 권한만 요청한다', async ({ page }) => {
-  fake.oauthUser = { email: '', name: '카카오닉네임' }
-  await page.goto('/#/account')
-  await page.getByTestId('login-kakao').click()
-  await expect(page.getByTestId('go-account')).toContainText('카카오닉네임')
-  await page.getByTestId('go-account').click()
-  await expect(page.getByTestId('who-name')).toHaveText('카카오닉네임')
-  await expect(page.getByText('카카오 로그인')).toBeVisible()
-  expect(fake.oauthRequests[0]).toMatchObject({ provider: 'kakao', scopes: 'profile_nickname' })
 })
 
 test('로그인 화면에서 취소하고 돌아오면 안내가 나오고 로그인되지 않는다', async ({ page }) => {

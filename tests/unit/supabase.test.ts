@@ -23,10 +23,7 @@ describe('Supabase 행 변환', () => {
 
 describe('friendlyAuthError', () => {
   it('상황별 한국어 안내', () => {
-    expect(friendlyAuthError({ code: 'over_email_send_rate_limit', message: 'x' })).toMatch(/너무 자주/)
-    expect(friendlyAuthError({ status: 429, message: 'x' })).toMatch(/너무 자주/)
-    expect(friendlyAuthError(new Error('Email address not authorized'))).toMatch(/이 이메일로는/)
-    expect(friendlyAuthError({ code: 'otp_expired', message: 'Token has expired or is invalid' })).toMatch(/코드가 맞지 않거나/)
+    expect(friendlyAuthError({ status: 429, message: 'x' })).toMatch(/너무 잦아요/)
     expect(friendlyAuthError(new TypeError('Failed to fetch'))).toMatch(/인터넷/)
     expect(friendlyAuthError(new Error('???'))).toMatch(/문제가 생겼어요/)
   })

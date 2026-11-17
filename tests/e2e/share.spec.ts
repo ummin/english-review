@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { GOOD_CODE, installFakeSupabase, type Fake } from './fakeSupabase'
+import { installFakeSupabase, loginGoogle, type Fake } from './fakeSupabase'
 
 const errors: string[] = []
 let fake: Fake
@@ -12,13 +12,7 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]))
 
 const AI = JSON.stringify({ cards: [{ en: 'Where is the boarding gate?', ko: '탑승구가 어디예요?', native: [5, 11], subs: [{ kind: 'reply', en: 'On your left.', ko: '왼쪽이에요.' }] }] })
-async function login(page: Page, email: string) {
-  await page.getByTestId('email').fill(email)
-  await page.getByTestId('send-code').click()
-  await page.getByTestId('code').fill(GOOD_CODE)
-  await page.getByTestId('verify').click()
-  await expect(page.getByRole('tablist')).toBeVisible()
-}
+const login = (page: Page, email: string) => loginGoogle(page, fake, email)
 async function addVideo(page: Page, title = '공항 영어') {
   await page.getByTestId('add-video').click()
   await page.getByTestId('title').fill(title)
@@ -197,4 +191,59 @@ test('백업: 이상한 파일은 안내만 하고 아무것도 바꾸지 않는
   await put('z.json', JSON.stringify({ app: 'english-review-backup', version: 1, videos: [{ id: 'v1', title: 't', youtubeId: 'bad', cards: [] }] }))
   await expect(page.getByTestId('restore-error')).toContainText('읽을 수 없어요')
   expect(JSON.stringify(fake.tables)).toBe(before)
+})
+
+test('계정 삭제: "삭제"를 입력해야 켜지고, 지우면 데이터와 공유 링크가 사라지고 로그아웃된다', async ({ page }) => {
+  const code = await aShares(page)
+  await tab(page, '홈')
+  await page.getByTestId('go-account').click()
+  await page.getByTestId('delete-open').click()
+  await expect(page.getByTestId('delete-yes')).toBeDisabled()
+  await page.getByTestId('delete-confirm').fill('삭제하기')
+  await expect(page.getByTestId('delete-yes')).toBeDisabled()
+  await page.getByTestId('delete-confirm').fill('삭제')
+  await page.getByTestId('delete-yes').click()
+  await expect(page.getByTestId('login-gate')).toBeVisible()
+  expect(fake.deleted).toEqual(['user-1'])
+  expect(fake.tables.videos).toHaveLength(0)
+  expect(await page.evaluate(() => localStorage.getItem('er-ui:video'))).toBeNull()
+  // 지운 사람의 공유 링크는 더 이상 열리지 않는다
+  await page.goto('about:blank')
+  await page.goto('/#/s/' + code)
+  await login(page, 'b@example.com')
+  await expect(page.getByTestId('shared-none')).toBeVisible()
+})
+
+test('계정 삭제: 서버 오류면 안내하고 로그인 상태와 데이터는 그대로다', async ({ page }) => {
+  await page.goto('/')
+  await login(page, 'a@example.com')
+  await addVideo(page)
+  await tab(page, '홈')
+  await page.getByTestId('go-account').click()
+  await page.getByTestId('delete-open').click()
+  await page.getByTestId('delete-confirm').fill('삭제')
+  fake.failRest = true
+  await page.getByTestId('delete-yes').click()
+  await expect(page.getByTestId('delete-error')).toBeVisible()
+  expect(fake.deleted).toEqual([])
+  fake.failRest = false
+  await expect(page.getByTestId('who-name')).toBeVisible()
+  expect(fake.tables.videos).toHaveLength(1)
+  await page.getByTestId('delete-cancel').click()
+  await expect(page.getByTestId('delete-confirm')).toHaveCount(0)
+})
+
+test('계정 삭제 뒤 같은 계정으로 다시 로그인하면 비어 있는 새 계정이다', async ({ page }) => {
+  await page.goto('/')
+  await login(page, 'a@example.com')
+  await addVideo(page)
+  await tab(page, '홈')
+  await page.getByTestId('go-account').click()
+  await page.getByTestId('delete-open').click()
+  await page.getByTestId('delete-confirm').fill('삭제')
+  await page.getByTestId('delete-yes').click()
+  await expect(page.getByTestId('login-gate')).toBeVisible()
+  await login(page, 'a@example.com')
+  await tab(page, '홈')
+  await expect(page.getByRole('heading', { name: '공항 영어' })).toHaveCount(0)
 })

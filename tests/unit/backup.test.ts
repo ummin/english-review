@@ -53,4 +53,11 @@ describe('공유 스키마', () => {
     expect(sql).toMatch(/revoke all on function public\.get_shared_video\(text\) from public, anon/)
     expect(sql).toMatch(/grant execute on function public\.get_shared_video\(text\) to authenticated/)
   })
+  it('schema.sql: 계정 삭제 함수는 본인 계정만, anon 은 실행 불가', () => {
+    const sql = readFileSync('supabase/schema.sql', 'utf8')
+    expect(sql).toMatch(/function public\.delete_my_account\(\)/)
+    expect(sql).toMatch(/delete from auth\.users where id = auth\.uid\(\)/)
+    expect(sql).toMatch(/revoke all on function public\.delete_my_account\(\) from public, anon/)
+    expect(sql).toMatch(/grant execute on function public\.delete_my_account\(\) to authenticated/)
+  })
 })
